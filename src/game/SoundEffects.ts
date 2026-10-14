@@ -335,5 +335,33 @@ export class SoundEffects {
     osc.start(now);
     osc.stop(now + 0.13);
   }
+
+  /** Переход в Фазу 2 (кибер-сирена / ускорение трафика) */
+  public playPhaseChange(): void {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    const notes = [330, 440, 554, 659];
+    const now = ctx.currentTime;
+
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const t = now + idx * 0.08;
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t);
+
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + 0.18);
+    });
+  }
 }
 

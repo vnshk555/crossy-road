@@ -16,6 +16,7 @@ const INITIAL_TEMPERATURE = 100;
 const HEAT_DECAY_PER_SEC = 4.2;
 const HEAT_BOOST_ON_FORWARD = 0.8;
 const CHECKPOINT_INTERVAL = 25; // Каждые 25 метров — новый клиент
+const PHASE_2_DURATION = 60; // 60 игровых секунд до наступления Фазы 2 (без учета пауз)
 
 type LaneType = 'sidewalk' | 'road' | 'energy_canal' | 'hyperloop' | 'delivery_point';
 
@@ -109,6 +110,13 @@ export class GameScene extends Phaser.Scene {
   private gameOverContainer!: Phaser.GameObjects.Container;
   private isPaused = false;
 
+  // Игровое время и фазы сложности
+  private gameTime = 0; // Чистое игровое время (накапливается по dt, не идёт на паузе!)
+  private currentPhase: 1 | 2 = 1;
+  private timeText!: Phaser.GameObjects.Text;
+  private phaseText!: Phaser.GameObjects.Text;
+  private phasePanelBg!: Phaser.GameObjects.Graphics;
+
   // Ввод
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
@@ -136,6 +144,8 @@ export class GameScene extends Phaser.Scene {
     this.isDead = false;
     this.isHopping = false;
     this.isPaused = false;
+    this.gameTime = 0;
+    this.currentPhase = 1;
     this.currentRidePlatform = null;
     this.playerCol = Math.floor(GRID_COLS / 2);
     this.playerRow = 1;
@@ -305,6 +315,7 @@ export class GameScene extends Phaser.Scene {
       const prevLane = this.lanes.get(rowIndex - 1);
       const prevType = prevLane ? prevLane.type : 'sidewalk';
 
+      const hyperloopChance = this.currentPhase === 2 ? 0.82 : 0.76;
       if (prevType === 'road' && rand < 0.48) {
         type = 'road';
       } else if (prevType === 'energy_canal' && rand < 0.42) {
@@ -313,7 +324,7 @@ export class GameScene extends Phaser.Scene {
         type = 'road';
       } else if (rand < 0.64) {
         type = 'energy_canal';
-      } else if (rand < 0.76 && rowIndex > 5) {
+      } else if (rand < hyperloopChance && rowIndex > 5) {
         type = 'hyperloop';
       } else {
         type = 'sidewalk';
@@ -853,6 +864,39 @@ export class GameScene extends Phaser.Scene {
     });
     this.hudContainer.add(this.distanceText);
 
+    // Панель игрового времени и фазы (рядом с дистанцией)
+    this.phasePanelBg = this.add.graphics();
+    this.phasePanelBg.fillStyle(0x0f172a, 0.85);
+    this.phasePanelBg.fillRoundedRect(170, 16, 130, 68, 12);
+    this.phasePanelBg.lineStyle(2, 0x1e293b, 1);
+    this.phasePanelBg.strokeRoundedRect(170, 16, 130, 68, 12);
+    this.hudContainer.add(this.phasePanelBg);
+
+    this.hudContainer.add(
+      this.add.text(235, 24, '⏱️ ВРЕМЯ', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '11px',
+        color: '#94a3b8',
+        fontStyle: 'bold',
+      }).setOrigin(0.5, 0)
+    );
+
+    this.timeText = this.add.text(235, 38, '00:00', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '19px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5, 0);
+    this.hudContainer.add(this.timeText);
+
+    this.phaseText = this.add.text(235, 60, 'ФАЗА 1', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '11px',
+      color: '#38bdf8',
+      fontStyle: 'bold',
+    }).setOrigin(0.5, 0);
+    this.hudContainer.add(this.phaseText);
+
     // 2. ИНДИКАТОР ТЕМПЕРАТУРЫ ПИЦЦЫ (по центру сверху) — ГЛАВНАЯ МЕХАНИКА
     const tempPanelW = 340;
     const tempPanelX = GAME_WIDTH / 2 - tempPanelW / 2;
@@ -1120,7 +1164,9 @@ export class GameScene extends Phaser.Scene {
       this.tweens.pauseAll();
       this.pauseBtnText.setText('▶');
       const tempIcon = this.temperature < 35 ? '❄️' : '🔥';
+      const phaseBadge = this.currentPhase === 2 ? '⚡ ФАЗА 2' : 'ФАЗА 1';
       this.pauseStatsText.setText(
+        `⏱️ Игровое время: ${this.formatGameTime(this.gameTime)} (${phaseBadge})\n` +
         `Дистанция: ${this.maxDistance} м  |  Рекорд: ${this.highScore} м\n` +
         `${tempIcon} Температура заказа: ${Math.round(this.temperature)}°C\n` +
         `🎯 Доставлено: ${this.completedDeliveries}  |  💵 Чаевые: $${this.tipsEarned}`
@@ -1131,6 +1177,92 @@ export class GameScene extends Phaser.Scene {
       this.pauseBtnText.setText('⏸');
       this.tweens.resumeAll();
     }
+  }
+
+  private formatGameTime(totalSec: number): string {
+    const sec = Math.floor(totalSec);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  private updateGameTimeDisplay(): void {
+    if (this.timeText) {
+      this.timeText.setText(this.formatGameTime(this.gameTime));
+    }
+  }
+
+  private triggerPhase2(): void {
+    this.currentPhase = 2;
+    this.soundFx.playPhaseChange();
+    this.cameras.main.flash(450, 245, 158, 11);
+    this.cameras.main.shake(350, 0.009);
+
+    // Подсветка панели HUD в золотисто-оранжевый цвет
+    this.phasePanelBg.clear();
+    this.phasePanelBg.fillStyle(0x0f172a, 0.95);
+    this.phasePanelBg.fillRoundedRect(170, 16, 130, 68, 12);
+    this.phasePanelBg.lineStyle(2, 0xf59e0b, 1);
+    this.phasePanelBg.strokeRoundedRect(170, 16, 130, 68, 12);
+
+    this.phaseText.setText('⚡ ФАЗА 2');
+    this.phaseText.setColor('#f59e0b');
+
+    // Экранное уведомление о старте Фазы 2
+    this.showPhaseNotification();
+  }
+
+  private showPhaseNotification(): void {
+    const banner = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40);
+    banner.setScrollFactor(0);
+    banner.setDepth(1500);
+
+    const bW = 540;
+    const bH = 100;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0f172a, 0.95);
+    bg.fillRoundedRect(-bW / 2, -bH / 2, bW, bH, 14);
+    bg.lineStyle(3, 0xf59e0b, 1);
+    bg.strokeRoundedRect(-bW / 2, -bH / 2, bW, bH, 14);
+    banner.add(bg);
+
+    const title = this.add.text(0, -20, '⚠️ НАЧАЛАСЬ ФАЗА 2! ⚠️', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '24px',
+      color: '#f59e0b',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    banner.add(title);
+
+    const desc = this.add.text(0, 16, '⚡ ЧАС ПИК: СКОРОСТЬ МАШИН +35%, ПОЕЗДА ХОДЯТ ЧАЩЕ!', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '13px',
+      color: '#e2e8f0',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    banner.add(desc);
+
+    banner.setScale(0.85);
+    banner.setAlpha(0);
+
+    this.tweens.add({
+      targets: banner,
+      scale: 1,
+      alpha: 1,
+      duration: 250,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(2400, () => {
+          this.tweens.add({
+            targets: banner,
+            y: banner.y - 30,
+            alpha: 0,
+            duration: 400,
+            onComplete: () => banner.destroy(),
+          });
+        });
+      },
+    });
   }
 
   // Окно Game Over (Смена завершена)
@@ -1518,6 +1650,15 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    // ИГРОВОЕ ВРЕМЯ (накапливается СТРОГО вне паузы и пока курьер жив)
+    this.gameTime += dt;
+    this.updateGameTimeDisplay();
+
+    // Проверка смены фазы строго после 60 игровых секунд
+    if (this.currentPhase === 1 && this.gameTime >= PHASE_2_DURATION) {
+      this.triggerPhase2();
+    }
+
     // Клавиатура
     this.handleKeyboard();
 
@@ -1587,6 +1728,7 @@ export class GameScene extends Phaser.Scene {
   private updateLanes(dt: number): void {
     const minRow = this.playerRow - MAX_LANES_BEHIND;
     const maxRow = this.playerRow + LANES_AHEAD;
+    const phaseSpeedMultiplier = this.currentPhase === 2 ? 1.35 : 1.0;
 
     for (let r = minRow; r <= maxRow; r++) {
       const lane = this.lanes.get(r);
@@ -1595,7 +1737,7 @@ export class GameScene extends Phaser.Scene {
       // Машины
       if (lane.type === 'road') {
         for (const v of lane.vehicles) {
-          v.x += v.speed * v.direction * dt;
+          v.x += v.speed * phaseSpeedMultiplier * v.direction * dt;
           if (v.direction === 1 && v.x - v.width / 2 > GAME_WIDTH + 80) {
             v.x = -80 - v.width / 2;
           } else if (v.direction === -1 && v.x + v.width / 2 < -80) {
@@ -1638,7 +1780,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (t.active) {
-          t.trainX += t.speed * t.direction * dt;
+          t.trainX += t.speed * phaseSpeedMultiplier * t.direction * dt;
           this.drawHyperloopTrain(t);
 
           const isOff = t.direction === 1
@@ -1648,7 +1790,10 @@ export class GameScene extends Phaser.Scene {
           if (isOff) {
             t.active = false;
             t.graphics.clear();
-            t.warningTimer = Phaser.Math.FloatBetween(4.5, 9.0);
+            // В Фазе 2 поезда появляются значительно чаще!
+            const minWait = this.currentPhase === 2 ? 2.5 : 4.5;
+            const maxWait = this.currentPhase === 2 ? 5.5 : 9.0;
+            t.warningTimer = Phaser.Math.FloatBetween(minWait, maxWait);
             this.drawHyperloopSignal(t.signalGraphics, false);
           }
         }
@@ -1771,7 +1916,8 @@ export class GameScene extends Phaser.Scene {
     if (reasonText) reasonText.setText(reason);
     if (statsText) {
       const best = isNewBest ? `🏆 НОВЫЙ РЕКОРД ДИСТАНЦИИ: ${this.maxDistance} м! 🌟` : `Дистанция: ${this.maxDistance} м  |  Рекорд: ${this.highScore} м`;
-      statsText.setText(`${best}\n🎯 Доставлено заказов: ${this.completedDeliveries}\n💵 Всего чаевых: $${this.tipsEarned}`);
+      const phaseBadge = this.currentPhase === 2 ? '⚡ ФАЗА 2' : 'ФАЗА 1';
+      statsText.setText(`${best}\n⏱️ Время смены: ${this.formatGameTime(this.gameTime)} (${phaseBadge})\n🎯 Доставлено заказов: ${this.completedDeliveries}\n💵 Всего чаевых: $${this.tipsEarned}`);
     }
 
     this.gameOverContainer.setVisible(true);

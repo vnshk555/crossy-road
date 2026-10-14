@@ -14,6 +14,7 @@
       "src_game_soundeffects_soundeffects_playheatboost",
       "src_game_soundeffects_soundeffects_playhop",
       "src_game_soundeffects_soundeffects_playpause",
+      "src_game_soundeffects_soundeffects_playphasechange",
       "src_game_soundeffects_soundeffects_playrailpass",
       "src_game_soundeffects_soundeffects_playrailwarning",
       "src_game_soundeffects_soundeffects_playzap",
@@ -21,19 +22,19 @@
     ],
     "1": [
       "src_game_gamescene_gamescene_checkcollisions",
-      "src_game_gamescene_gamescene_findplatformunderplayer",
+      "src_game_gamescene_gamescene_formatgametime",
       "src_game_gamescene_gamescene_handlecrash",
       "src_game_gamescene_gamescene_handledeath",
-      "src_game_gamescene_gamescene_handledeliverycompleted",
       "src_game_gamescene_gamescene_handleenergyfall",
       "src_game_gamescene_gamescene_handlekeyboard",
       "src_game_gamescene_gamescene_handlepizzafreeze",
-      "src_game_gamescene_gamescene_onland",
-      "src_game_gamescene_gamescene_showfloatnotice",
       "src_game_gamescene_gamescene_showgameovermodal",
+      "src_game_gamescene_gamescene_showphasenotification",
       "src_game_gamescene_gamescene_spawnneonsparks",
+      "src_game_gamescene_gamescene_triggerphase2",
       "src_game_gamescene_gamescene_update",
       "src_game_gamescene_gamescene_updatecamerafollow",
+      "src_game_gamescene_gamescene_updategametimedisplay",
       "src_game_gamescene_gamescene_updatetemperaturebar",
       "src_game_gamescene_hoverplatform"
     ],
@@ -79,30 +80,37 @@
       "src_game_gamescene_gamescene_togglepause"
     ],
     "6": [
+      "src_game_gamescene_gamescene_findplatformunderplayer",
+      "src_game_gamescene_gamescene_handledeliverycompleted",
+      "src_game_gamescene_gamescene_onland",
+      "src_game_gamescene_gamescene_showfloatnotice"
+    ],
+    "7": [
       "src_game_gamescene_gamescene_create",
       "src_game_gamescene_gamescene_setuppointercontrols",
       "src_game_gamescene_gamescene_updatecameraimmediate"
     ]
   },
   "cohesion": {
-    "0": 0.20588235294117646,
-    "1": 0.16666666666666666,
+    "0": 0.19607843137254902,
+    "1": 0.15833333333333333,
     "2": 0.4,
     "3": 0.25,
     "4": 0.35714285714285715,
     "5": 0.4,
-    "6": 0.6666666666666666
+    "6": 0.6666666666666666,
+    "7": 0.6666666666666666
   },
   "gods": [
     {
       "id": "src_game_gamescene_gamescene",
       "label": "GameScene",
-      "degree": 45
+      "degree": 49
     },
     {
       "id": "src_game_soundeffects_soundeffects",
       "label": "SoundEffects",
-      "degree": 19
+      "degree": 20
     },
     {
       "id": "src_game_config_creategame",
