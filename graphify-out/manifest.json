@@ -1,0 +1,22 @@
+{
+  "game/GameScene.ts": {
+    "mtime": 1791955483.8292153,
+    "ast_hash": "298b87f477e0bb600f465ef8ee8b35de",
+    "semantic_hash": "298b87f477e0bb600f465ef8ee8b35de"
+  },
+  "game/SoundEffects.ts": {
+    "mtime": 1791955414.314389,
+    "ast_hash": "c6d3e141c3c55c9464e98c22bef60188",
+    "semantic_hash": "c6d3e141c3c55c9464e98c22bef60188"
+  },
+  "game/config.ts": {
+    "mtime": 1791940795.8296068,
+    "ast_hash": "529b7ed032cb3d5b910755cacfd0eb23",
+    "semantic_hash": "529b7ed032cb3d5b910755cacfd0eb23"
+  },
+  "main.ts": {
+    "mtime": 1791940795.8296068,
+    "ast_hash": "c999ed8a64d4bcb19d0af2ad1004c6b2",
+    "semantic_hash": "c999ed8a64d4bcb19d0af2ad1004c6b2"
+  }
+}

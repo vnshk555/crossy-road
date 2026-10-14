@@ -103,12 +103,18 @@ export class GameScene extends Phaser.Scene {
   private tempBarFill!: Phaser.GameObjects.Graphics;
   private highScoreText!: Phaser.GameObjects.Text;
   private muteBtnText!: Phaser.GameObjects.Text;
+  private pauseBtnText!: Phaser.GameObjects.Text;
+  private pauseContainer!: Phaser.GameObjects.Container;
+  private pauseStatsText!: Phaser.GameObjects.Text;
   private gameOverContainer!: Phaser.GameObjects.Container;
+  private isPaused = false;
 
   // Ввод
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
   private spaceKey!: Phaser.Input.Keyboard.Key;
+  private pauseKey!: Phaser.Input.Keyboard.Key;
+  private escKey!: Phaser.Input.Keyboard.Key;
   private touchStartX = 0;
   private touchStartY = 0;
 
@@ -129,6 +135,7 @@ export class GameScene extends Phaser.Scene {
     this.completedDeliveries = 0;
     this.isDead = false;
     this.isHopping = false;
+    this.isPaused = false;
     this.currentRidePlatform = null;
     this.playerCol = Math.floor(GRID_COLS / 2);
     this.playerRow = 1;
@@ -161,6 +168,8 @@ export class GameScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     }) as Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+    this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
     this.setupPointerControls();
   }
@@ -888,12 +897,12 @@ export class GameScene extends Phaser.Scene {
     // 3. ЧАЕВЫЕ И СЧЕТЧИК ДОСТАВОК (справа)
     const statsBg = this.add.graphics();
     statsBg.fillStyle(0x0f172a, 0.85);
-    statsBg.fillRoundedRect(GAME_WIDTH - 250, 16, 170, 68, 12);
+    statsBg.fillRoundedRect(GAME_WIDTH - 305, 16, 170, 68, 12);
     statsBg.lineStyle(2, 0x1e293b, 1);
-    statsBg.strokeRoundedRect(GAME_WIDTH - 250, 16, 170, 68, 12);
+    statsBg.strokeRoundedRect(GAME_WIDTH - 305, 16, 170, 68, 12);
     this.hudContainer.add(statsBg);
 
-    this.deliveryCountText = this.add.text(GAME_WIDTH - 238, 24, '🎯 Доставлено: 0', {
+    this.deliveryCountText = this.add.text(GAME_WIDTH - 293, 24, '🎯 Доставлено: 0', {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '12px',
       color: '#10b981',
@@ -901,13 +910,28 @@ export class GameScene extends Phaser.Scene {
     });
     this.hudContainer.add(this.deliveryCountText);
 
-    this.tipsText = this.add.text(GAME_WIDTH - 238, 42, `💵 $${this.tipsEarned}`, {
+    this.tipsText = this.add.text(GAME_WIDTH - 293, 42, `💵 $${this.tipsEarned}`, {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '24px',
       color: '#facc15',
       fontStyle: 'bold',
     });
     this.hudContainer.add(this.tipsText);
+
+    // Кнопка паузы
+    const pauseBg = this.add.graphics();
+    pauseBg.fillStyle(0x0f172a, 0.85);
+    pauseBg.fillRoundedRect(GAME_WIDTH - 125, 16, 50, 68, 12);
+    pauseBg.lineStyle(2, 0x1e293b, 1);
+    pauseBg.strokeRoundedRect(GAME_WIDTH - 125, 16, 50, 68, 12);
+    this.hudContainer.add(pauseBg);
+
+    this.pauseBtnText = this.add.text(GAME_WIDTH - 100, 50, '⏸', {
+      fontSize: '22px',
+    }).setOrigin(0.5);
+    this.pauseBtnText.setInteractive({ useHandCursor: true });
+    this.pauseBtnText.on('pointerdown', () => this.togglePause());
+    this.hudContainer.add(this.pauseBtnText);
 
     // Кнопка звука
     const muteBg = this.add.graphics();
@@ -926,6 +950,9 @@ export class GameScene extends Phaser.Scene {
       this.muteBtnText.setText(m ? '🔇' : '🔊');
     });
     this.hudContainer.add(this.muteBtnText);
+
+    // Модальное окно паузы
+    this.createPauseModal();
 
     // Модальное окно Game Over
     this.createGameOverModal();
@@ -989,12 +1016,121 @@ export class GameScene extends Phaser.Scene {
 
       const zone = this.add.zone(x, y, 42, 42).setInteractive({ useHandCursor: true });
       zone.on('pointerdown', () => {
-        if (!this.isDead) this.tryMove(dir);
+        if (!this.isDead && !this.isPaused) this.tryMove(dir);
       });
       dpad.add(zone);
     });
 
     this.hudContainer.add(dpad);
+  }
+
+  // Модальное окно паузы
+  private createPauseModal(): void {
+    this.pauseContainer = this.add.container(0, 0);
+    this.pauseContainer.setScrollFactor(0);
+    this.pauseContainer.setDepth(2500);
+    this.pauseContainer.setVisible(false);
+
+    const overlay = this.add.graphics();
+    overlay.fillStyle(0x030712, 0.75);
+    overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    this.pauseContainer.add(overlay);
+
+    // Блокируем сквозные клики
+    const blockerZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT);
+    blockerZone.setInteractive();
+    this.pauseContainer.add(blockerZone);
+
+    const modalX = GAME_WIDTH / 2;
+    const modalY = GAME_HEIGHT / 2;
+    const modalW = 460;
+    const modalH = 320;
+
+    const card = this.add.graphics();
+    card.fillStyle(0x0f172a, 0.98);
+    card.fillRoundedRect(modalX - modalW / 2, modalY - modalH / 2, modalW, modalH, 16);
+    card.lineStyle(3, 0x06b6d4, 0.9);
+    card.strokeRoundedRect(modalX - modalW / 2, modalY - modalH / 2, modalW, modalH, 16);
+    this.pauseContainer.add(card);
+
+    const title = this.add.text(modalX, modalY - 110, '⏸️ ПАУЗА', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '32px',
+      color: '#38bdf8',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.pauseContainer.add(title);
+
+    const subtitle = this.add.text(modalX, modalY - 65, 'СМЕНА КУРЬЕРА ПРИОСТАНОВЛЕНА', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '13px',
+      color: '#94a3b8',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.pauseContainer.add(subtitle);
+
+    this.pauseStatsText = this.add.text(modalX, modalY - 10, '', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '17px',
+      color: '#e2e8f0',
+      align: 'center',
+      lineSpacing: 6,
+    }).setOrigin(0.5);
+    this.pauseContainer.add(this.pauseStatsText);
+
+    // Кнопка продолжить
+    const btnW = 240;
+    const btnH = 50;
+    const btnY = modalY + 70;
+
+    const btnBg = this.add.graphics();
+    btnBg.fillStyle(0x0284c7, 1);
+    btnBg.fillRoundedRect(modalX - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
+    btnBg.lineStyle(2, 0x38bdf8, 1);
+    btnBg.strokeRoundedRect(modalX - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
+    this.pauseContainer.add(btnBg);
+
+    const btnText = this.add.text(modalX, btnY, 'ПРОДОЛЖИТЬ ▶', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '18px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.pauseContainer.add(btnText);
+
+    const hint = this.add.text(modalX, modalY + 118, 'или нажми P / ESC', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '13px',
+      color: '#64748b',
+    }).setOrigin(0.5);
+    this.pauseContainer.add(hint);
+
+    const btnZone = this.add.zone(modalX, btnY, btnW, btnH).setInteractive({ useHandCursor: true });
+    btnZone.on('pointerdown', () => this.togglePause());
+    this.pauseContainer.add(btnZone);
+  }
+
+  private togglePause(): void {
+    if (this.isDead) return;
+
+    this.isPaused = !this.isPaused;
+    this.soundFx.playPause(this.isPaused);
+
+    if (this.isPaused) {
+      this.tweens.pauseAll();
+      this.pauseBtnText.setText('▶');
+      const tempIcon = this.temperature < 35 ? '❄️' : '🔥';
+      this.pauseStatsText.setText(
+        `Дистанция: ${this.maxDistance} м  |  Рекорд: ${this.highScore} м\n` +
+        `${tempIcon} Температура заказа: ${Math.round(this.temperature)}°C\n` +
+        `🎯 Доставлено: ${this.completedDeliveries}  |  💵 Чаевые: $${this.tipsEarned}`
+      );
+      this.pauseContainer.setVisible(true);
+    } else {
+      this.pauseContainer.setVisible(false);
+      this.pauseBtnText.setText('⏸');
+      this.tweens.resumeAll();
+    }
   }
 
   // Окно Game Over (Смена завершена)
@@ -1085,12 +1221,13 @@ export class GameScene extends Phaser.Scene {
   // =========================================================================
   private setupPointerControls(): void {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.isDead || this.isPaused) return;
       this.touchStartX = pointer.x;
       this.touchStartY = pointer.y;
     });
 
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      if (this.isDead) return;
+      if (this.isDead || this.isPaused) return;
 
       const dx = pointer.x - this.touchStartX;
       const dy = pointer.y - this.touchStartY;
@@ -1116,7 +1253,7 @@ export class GameScene extends Phaser.Scene {
   // ДВИЖЕНИЕ КУРЬЕРА (ПЛАВНАЯ ФИЗИКА БРЁВЕН И СЕТКИ)
   // =========================================================================
   private tryMove(dir: 'up' | 'down' | 'left' | 'right'): void {
-    if (this.isHopping || this.isDead) return;
+    if (this.isHopping || this.isDead || this.isPaused) return;
 
     let targetCol = this.playerCol;
     let targetRow = this.playerRow;
@@ -1371,6 +1508,16 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    // Горячие клавиши паузы (P или ESC)
+    if (Phaser.Input.Keyboard.JustDown(this.pauseKey) || Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.togglePause();
+      return;
+    }
+
+    if (this.isPaused) {
+      return;
+    }
+
     // Клавиатура
     this.handleKeyboard();
 
@@ -1597,6 +1744,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleDeath(reason: string): void {
+    if (this.isPaused) {
+      this.isPaused = false;
+      this.pauseContainer.setVisible(false);
+      this.pauseBtnText.setText('⏸');
+      this.tweens.resumeAll();
+    }
     this.isDead = true;
     this.soundFx.playGameOver();
 
@@ -1631,6 +1784,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private restartGame(): void {
+    if (this.isPaused) {
+      this.tweens.resumeAll();
+    }
     this.scene.restart();
   }
 
