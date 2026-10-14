@@ -1,22 +1,22 @@
 import Phaser from 'phaser';
 import { SoundEffects } from './SoundEffects';
-
-// === КОНСТАНТЫ ИГРЫ ===
-const TILE_SIZE = 60;
-const GRID_COLS = 16;
-const GAME_WIDTH = 960;
-const GAME_HEIGHT = 640;
-const CAMERA_OFFSET_Y = 440;
-const HOP_DURATION = 105;
-const MAX_LANES_BEHIND = 6;
-const LANES_AHEAD = 16;
-
-// Механика остывания пиццы
-const INITIAL_TEMPERATURE = 100;
-const HEAT_DECAY_PER_SEC = 4.2;
-const HEAT_BOOST_ON_FORWARD = 0.8;
-const CHECKPOINT_INTERVAL = 25; // Каждые 25 метров — новый клиент
-const PHASE_2_DELIVERY_THRESHOLD = 1; // Порог доставленных заказов для активации Фазы 2 (Час пик)
+import {
+  GAME_CONFIG,
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  TILE_SIZE,
+  GRID_COLS,
+  CAMERA_OFFSET_Y,
+  HOP_DURATION,
+  MAX_LANES_BEHIND,
+  LANES_AHEAD,
+  INITIAL_TEMPERATURE,
+  HEAT_DECAY_PER_SEC,
+  HEAT_BOOST_ON_FORWARD,
+  CHECKPOINT_INTERVAL,
+  PHASE_2_DELIVERY_THRESHOLD,
+  TIP_PER_DELIVERY,
+} from './config';
 
 type LaneType = 'sidewalk' | 'road' | 'energy_canal' | 'hyperloop' | 'delivery_point';
 
@@ -85,7 +85,7 @@ export class GameScene extends Phaser.Scene {
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'up';
 
   // Состояние смены и заказов
-  private temperature = INITIAL_TEMPERATURE;
+  private temperature: number = INITIAL_TEMPERATURE;
   private completedDeliveries = 0;
   private tipsEarned = 0;
   private maxDistance = 0;
@@ -315,7 +315,8 @@ export class GameScene extends Phaser.Scene {
       const prevLane = this.lanes.get(rowIndex - 1);
       const prevType = prevLane ? prevLane.type : 'sidewalk';
 
-      const hyperloopChance = this.currentPhase === 2 ? 0.82 : 0.76;
+      const phaseConfig = this.currentPhase === 2 ? GAME_CONFIG.phases.phase2 : GAME_CONFIG.phases.phase1;
+      const hyperloopChance = phaseConfig.hyperloopChance;
       if (prevType === 'road' && rand < 0.48) {
         type = 'road';
       } else if (prevType === 'energy_canal' && rand < 0.42) {
@@ -1583,7 +1584,7 @@ export class GameScene extends Phaser.Scene {
   // Доставка заказа клиенту (однократно за контрольную точку)
   private handleDeliveryCompleted(lane: Lane): void {
     this.completedDeliveries += 1;
-    this.tipsEarned += 100;
+    this.tipsEarned += TIP_PER_DELIVERY;
     this.temperature = 100; // Новый горячий заказ!
     localStorage.setItem('cyber_courier_tips', String(this.tipsEarned));
 
@@ -1736,7 +1737,8 @@ export class GameScene extends Phaser.Scene {
   private updateLanes(dt: number): void {
     const minRow = this.playerRow - MAX_LANES_BEHIND;
     const maxRow = this.playerRow + LANES_AHEAD;
-    const phaseSpeedMultiplier = this.currentPhase === 2 ? 1.10 : 1.0;
+    const phaseConfig = this.currentPhase === 2 ? GAME_CONFIG.phases.phase2 : GAME_CONFIG.phases.phase1;
+    const phaseSpeedMultiplier = phaseConfig.vehicleSpeedMultiplier;
 
     for (let r = minRow; r <= maxRow; r++) {
       const lane = this.lanes.get(r);
@@ -1744,7 +1746,7 @@ export class GameScene extends Phaser.Scene {
 
       // Машины
       if (lane.type === 'road') {
-        const roadWrapBound = 140;
+        const roadWrapBound = GAME_CONFIG.traffic.roadWrapBound;
         const roadSpan = GAME_WIDTH + roadWrapBound * 2;
 
         for (const v of lane.vehicles) {
@@ -1763,7 +1765,7 @@ export class GameScene extends Phaser.Scene {
             for (let j = i + 1; j < lane.vehicles.length; j++) {
               const vA = lane.vehicles[i];
               const vB = lane.vehicles[j];
-              const safeDist = (vA.width + vB.width) / 2 + 50;
+              const safeDist = (vA.width + vB.width) / 2 + GAME_CONFIG.traffic.vehicleSafeDistanceBuffer;
               const dist = Math.abs(vA.x - vB.x);
               if (dist < safeDist) {
                 const shift = (safeDist - dist) / 2;
@@ -1849,8 +1851,8 @@ export class GameScene extends Phaser.Scene {
             t.active = false;
             t.graphics.clear();
             // В Фазе 2 поезда появляются значительно чаще!
-            const minWait = this.currentPhase === 2 ? 2.5 : 4.5;
-            const maxWait = this.currentPhase === 2 ? 5.5 : 9.0;
+            const minWait = phaseConfig.hyperloopMinWait;
+            const maxWait = phaseConfig.hyperloopMaxWait;
             t.warningTimer = Phaser.Math.FloatBetween(minWait, maxWait);
             this.drawHyperloopSignal(t.signalGraphics, false);
           }

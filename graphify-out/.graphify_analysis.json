@@ -1,6 +1,27 @@
 {
   "communities": {
     "0": [
+      "src_game_soundeffects",
+      "src_game_soundeffects_soundeffects",
+      "src_game_soundeffects_soundeffects_constructor",
+      "src_game_soundeffects_soundeffects_getmuted",
+      "src_game_soundeffects_soundeffects_initctx",
+      "src_game_soundeffects_soundeffects_playbonk",
+      "src_game_soundeffects_soundeffects_playcoin",
+      "src_game_soundeffects_soundeffects_playcrash",
+      "src_game_soundeffects_soundeffects_playdeliverysuccess",
+      "src_game_soundeffects_soundeffects_playfreezewarning",
+      "src_game_soundeffects_soundeffects_playgameover",
+      "src_game_soundeffects_soundeffects_playheatboost",
+      "src_game_soundeffects_soundeffects_playhop",
+      "src_game_soundeffects_soundeffects_playpause",
+      "src_game_soundeffects_soundeffects_playphasechange",
+      "src_game_soundeffects_soundeffects_playrailpass",
+      "src_game_soundeffects_soundeffects_playrailwarning",
+      "src_game_soundeffects_soundeffects_playzap",
+      "src_game_soundeffects_soundeffects_togglemute"
+    ],
+    "1": [
       "src_game_gamescene_gamescene_checkcollisions",
       "src_game_gamescene_gamescene_formatgametime",
       "src_game_gamescene_gamescene_handlecrash",
@@ -16,7 +37,7 @@
       "src_game_gamescene_gamescene_updatetemperaturebar",
       "src_game_gamescene_hoverplatform"
     ],
-    "1": [
+    "2": [
       "src_game_gamescene_gamescene",
       "src_game_gamescene_gamescene_constructor",
       "src_game_gamescene_gamescene_createpickupitem",
@@ -28,32 +49,10 @@
       "src_game_gamescene_gamescene_setupcyberlanevisuals",
       "src_game_gamescene_gamescene_updatelanes"
     ],
-    "2": [
-      "src_game_soundeffects",
-      "src_game_soundeffects_soundeffects",
-      "src_game_soundeffects_soundeffects_constructor",
-      "src_game_soundeffects_soundeffects_getmuted",
-      "src_game_soundeffects_soundeffects_playcoin",
-      "src_game_soundeffects_soundeffects_playfreezewarning",
-      "src_game_soundeffects_soundeffects_playheatboost",
-      "src_game_soundeffects_soundeffects_playrailpass",
-      "src_game_soundeffects_soundeffects_playrailwarning",
-      "src_game_soundeffects_soundeffects_togglemute"
-    ],
     "3": [
-      "src_game_soundeffects_soundeffects_initctx",
-      "src_game_soundeffects_soundeffects_playbonk",
-      "src_game_soundeffects_soundeffects_playcrash",
-      "src_game_soundeffects_soundeffects_playdeliverysuccess",
-      "src_game_soundeffects_soundeffects_playgameover",
-      "src_game_soundeffects_soundeffects_playhop",
-      "src_game_soundeffects_soundeffects_playpause",
-      "src_game_soundeffects_soundeffects_playphasechange",
-      "src_game_soundeffects_soundeffects_playzap"
-    ],
-    "4": [
       "src_game_config",
       "src_game_config_creategame",
+      "src_game_config_game_config",
       "src_game_gamescene",
       "src_game_gamescene_hyperloopstate",
       "src_game_gamescene_lane",
@@ -61,7 +60,7 @@
       "src_game_gamescene_vehicle",
       "src_main"
     ],
-    "5": [
+    "4": [
       "src_game_gamescene_gamescene_bounceblockedmove",
       "src_game_gamescene_gamescene_cleanupoldlanes",
       "src_game_gamescene_gamescene_coltoworldx",
@@ -71,7 +70,7 @@
       "src_game_gamescene_gamescene_rowtoworldy",
       "src_game_gamescene_gamescene_trymove"
     ],
-    "6": [
+    "5": [
       "src_game_gamescene_gamescene_createdpad",
       "src_game_gamescene_gamescene_creategameovermodal",
       "src_game_gamescene_gamescene_createhud",
@@ -79,7 +78,7 @@
       "src_game_gamescene_gamescene_restartgame",
       "src_game_gamescene_gamescene_togglepause"
     ],
-    "7": [
+    "6": [
       "src_game_gamescene_gamescene_findplatformunderplayer",
       "src_game_gamescene_gamescene_handledeliverycompleted",
       "src_game_gamescene_gamescene_onland",
@@ -87,22 +86,25 @@
       "src_game_gamescene_gamescene_showphasenotification",
       "src_game_gamescene_gamescene_triggerphase2"
     ],
-    "8": [
+    "7": [
       "src_game_gamescene_gamescene_create",
       "src_game_gamescene_gamescene_setuppointercontrols",
       "src_game_gamescene_gamescene_updatecameraimmediate"
+    ],
+    "8": [
+      "src_game_config_display_width_game_width_height_game_height_tilesize_tile_size_gridcols_grid_cols_cameraoffsety_camera_offset_y_hopduration_hop_duration_maxlanesbehind_max_lanes_behind_lanesahead_lanes_ahead_pizza_initialtemperature_initial_temperature_heatdecaypersec_heat_decay_per_sec_heatboostonforward_heat_boost_on_forward_checkpointinterval_checkpoint_interval_tipperdelivery_tip_per_delivery_phases_phase2deliverythreshold_phase_2_delivery_threshold"
     ]
   },
   "cohesion": {
-    "0": 0.18681318681318682,
-    "1": 0.4,
-    "2": 0.2,
-    "3": 0.2222222222222222,
-    "4": 0.2857142857142857,
-    "5": 0.35714285714285715,
+    "0": 0.18128654970760233,
+    "1": 0.18681318681318682,
+    "2": 0.4,
+    "3": 0.2777777777777778,
+    "4": 0.35714285714285715,
+    "5": 0.4,
     "6": 0.4,
-    "7": 0.4,
-    "8": 0.6666666666666666
+    "7": 0.6666666666666666,
+    "8": 1.0
   },
   "gods": [
     {
@@ -126,6 +128,11 @@
       "degree": 2
     },
     {
+      "id": "src_game_config_game_config",
+      "label": "GAME_CONFIG",
+      "degree": 2
+    },
+    {
       "id": "src_game_gamescene_lanetype",
       "label": "LaneType",
       "degree": 1
@@ -144,6 +151,11 @@
       "id": "src_game_gamescene_lane",
       "label": "Lane",
       "degree": 1
+    },
+    {
+      "id": "src_game_config_display_width_game_width_height_game_height_tilesize_tile_size_gridcols_grid_cols_cameraoffsety_camera_offset_y_hopduration_hop_duration_maxlanesbehind_max_lanes_behind_lanesahead_lanes_ahead_pizza_initialtemperature_initial_temperature_heatdecaypersec_heat_decay_per_sec_heatboostonforward_heat_boost_on_forward_checkpointinterval_checkpoint_interval_tipperdelivery_tip_per_delivery_phases_phase2deliverythreshold_phase_2_delivery_threshold",
+      "label": "{\n  display: {\n    width: GAME_WIDTH,\n    height: GAME_HEIGHT,\n    tileSize: TILE_SIZE,\n    gridCols: GRID_COLS,\n    cameraOffsetY: CAMERA_OFFSET_Y,\n    hopDuration: HOP_DURATION,\n    maxLanesBehind: MAX_LANES_BEHIND,\n    lanesAhead: LANES_AHEAD,\n  },\n  pizza: {\n    initialTemperature: INITIAL_TEMPERATURE,\n    heatDecayPerSec: HEAT_DECAY_PER_SEC,\n    heatBoostOnForward: HEAT_BOOST_ON_FORWARD,\n    checkpointInterval: CHECKPOINT_INTERVAL,\n    tipPerDelivery: TIP_PER_DELIVERY,\n  },\n  phases: {\n    phase2DeliveryThreshold: PHASE_2_DELIVERY_THRESHOLD,\n  },\n}",
+      "degree": 0
     }
   ],
   "surprises": [
