@@ -684,30 +684,66 @@ export class GameScene extends Phaser.Scene {
     g.fillRect(backX - (v.direction === 1 ? 2 : -1), -halfH + 5, 2, v.height - 10);
   }
 
-  // Отрисовка платформы на магнитной подушке
+  // Отрисовка бревна на воде (стилизованное воксельное бревно с корой, кольцами спила и пеной)
   private drawHoverPlatform(p: HoverPlatform): void {
     const g = p.graphics;
     g.clear();
 
     const halfW = p.width / 2;
-    const halfH = p.height / 2;
+    const halfH = 18; // высота бревна 36px
 
-    // Свечение репульсоров снизу
-    g.fillStyle(0x06b6d4, 0.45);
-    g.fillRoundedRect(p.x - halfW - 2, -halfH + 3, p.width + 4, p.height, 8);
+    // 1. Тень в воде под бревном
+    g.fillStyle(0x013a5e, 0.6);
+    g.fillRoundedRect(p.x - halfW - 3, -halfH + 6, p.width + 6, halfH * 2, 10);
 
-    // Металлическая платформа
-    g.fillStyle(0x1e293b, 1);
-    g.fillRoundedRect(p.x - halfW, -halfH, p.width, p.height, 6);
+    // 2. Водная рябь / белая пена спереди и сзади бревна
+    const frontX = p.direction === 1 ? p.x + halfW : p.x - halfW;
+    const backX = p.direction === 1 ? p.x - halfW : p.x + halfW;
+    g.fillStyle(0xe0f2fe, 0.65);
+    g.fillEllipse(frontX + p.direction * 5, 0, 10, 24);
+    g.fillStyle(0x38bdf8, 0.4);
+    g.fillEllipse(backX - p.direction * 6, 0, 12, 20);
 
-    // Поверхность платформы с нескользящим покрытием
-    g.fillStyle(0x334155, 1);
-    g.fillRoundedRect(p.x - halfW + 4, -halfH + 4, p.width - 8, p.height - 8, 4);
+    // 3. Основная кора дерева (насыщенный теплый темно-коричневый цвет сосны/дуба)
+    g.fillStyle(0x78350f, 1);
+    g.fillRoundedRect(p.x - halfW, -halfH, p.width, halfH * 2, 8);
 
-    // Репульсорные сопла по бокам
-    g.fillStyle(0x06b6d4, 1);
-    g.fillCircle(p.x - halfW + 10, 0, 5);
-    g.fillCircle(p.x + halfW - 10, 0, 5);
+    // 4. Верхняя светлая часть древесины (спил / сердцевина бревна)
+    g.fillStyle(0xb45309, 1);
+    g.fillRoundedRect(p.x - halfW + 6, -halfH + 4, p.width - 12, halfH * 2 - 8, 5);
+
+    // 5. Продольные волокна древесины (текстура досок/коры)
+    g.fillStyle(0x92400e, 0.9);
+    g.fillRect(p.x - halfW + 12, -6, p.width - 24, 3);
+    g.fillRect(p.x - halfW + 16, 4, p.width - 32, 2.5);
+    g.fillStyle(0xd97706, 0.7);
+    g.fillRect(p.x - halfW + 14, -1, p.width - 28, 2);
+
+    // 6. Спилы дерева на торцах (годовые кольца)
+    [p.x - halfW + 10, p.x + halfW - 10].forEach((ringX) => {
+      // Светлый наружный срез
+      g.fillStyle(0xd97706, 1);
+      g.fillCircle(ringX, 0, 9);
+      // Среднее кольцо
+      g.fillStyle(0x92400e, 1);
+      g.fillCircle(ringX, 0, 6);
+      // Внутреннее кольцо
+      g.fillStyle(0x78350f, 1);
+      g.fillCircle(ringX, 0, 3.5);
+      // Сердцевина
+      g.fillStyle(0x451a03, 1);
+      g.fillCircle(ringX, 0, 1.5);
+    });
+
+    // 7. Кибер-крепежи (два неоновых хомута со светодиодом, объединяющие сеттинг)
+    [-halfW * 0.45, halfW * 0.45].forEach((offset) => {
+      g.fillStyle(0x0f172a, 0.95);
+      g.fillRect(p.x + offset - 3, -halfH, 6, halfH * 2);
+      g.fillStyle(0x06b6d4, 1);
+      g.fillRect(p.x + offset - 1, -halfH + 2, 2, halfH * 2 - 4);
+      g.fillStyle(0x38bdf8, 1);
+      g.fillCircle(p.x + offset, -halfH + 5, 2);
+    });
   }
 
   // Сигнализация гиперлупа
@@ -1077,7 +1113,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ДВИЖЕНИЕ КУРЬЕРА
+  // ДВИЖЕНИЕ КУРЬЕРА (ПЛАВНАЯ ФИЗИКА БРЁВЕН И СЕТКИ)
   // =========================================================================
   private tryMove(dir: 'up' | 'down' | 'left' | 'right'): void {
     if (this.isHopping || this.isDead) return;
@@ -1090,7 +1126,7 @@ export class GameScene extends Phaser.Scene {
     else if (dir === 'left') targetCol -= 1;
     else if (dir === 'right') targetCol += 1;
 
-    if (targetCol < 0 || targetCol >= GRID_COLS || targetRow < 0) {
+    if (targetRow < 0) {
       this.soundFx.playBonk();
       return;
     }
@@ -1098,13 +1134,56 @@ export class GameScene extends Phaser.Scene {
     this.playerFacing = dir;
     this.redrawCourier(dir);
 
-    // Препятствия
     const targetLane = this.lanes.get(targetRow);
+    const currentLane = this.lanes.get(this.playerRow);
+
+    // Препятствия на целевой полосе (терминалы/столбы)
     if (targetLane && targetLane.obstacles.has(targetCol)) {
       this.soundFx.playBonk();
       this.bounceBlockedMove(dir);
       return;
     }
+
+    // Расчет целевой координаты X:
+    // Если игрок на бревне — прыжки происходят относительно текущего положения бревна!
+    let destX: number;
+    if (currentLane && currentLane.type === 'energy_canal' && this.currentRidePlatform) {
+      if (dir === 'left') {
+        destX = this.playerContainer.x - TILE_SIZE;
+      } else if (dir === 'right') {
+        destX = this.playerContainer.x + TILE_SIZE;
+      } else {
+        // Прыжок вперед / назад с бревна
+        if (targetLane && targetLane.type === 'energy_canal') {
+          // На следующее бревно: сохраняем текущий X без резких боковых рывков!
+          destX = this.playerContainer.x;
+        } else {
+          // На тротуар или дорогу: плавно выравниваемся по ближайшей ячейке сетки
+          const nearestCol = Phaser.Math.Clamp(
+            Math.round((this.playerContainer.x - TILE_SIZE / 2) / TILE_SIZE),
+            0,
+            GRID_COLS - 1
+          );
+          destX = this.colToWorldX(nearestCol);
+          targetCol = nearestCol;
+        }
+      }
+    } else {
+      // Обычное перемещение по ячейкам сетки
+      if (targetCol < 0 || targetCol >= GRID_COLS) {
+        this.soundFx.playBonk();
+        return;
+      }
+      destX = this.colToWorldX(targetCol);
+    }
+
+    // Ограничиваем X в пределах экрана
+    destX = Phaser.Math.Clamp(destX, TILE_SIZE / 2, GAME_WIDTH - TILE_SIZE / 2);
+    targetCol = Phaser.Math.Clamp(
+      Math.round((destX - TILE_SIZE / 2) / TILE_SIZE),
+      0,
+      GRID_COLS - 1
+    );
 
     this.isHopping = true;
     this.currentRidePlatform = null;
@@ -1112,7 +1191,7 @@ export class GameScene extends Phaser.Scene {
     this.playerRow = targetRow;
 
     if (dir === 'up') {
-      // Продвижение вперед дает подогрев пиццы за счет движения!
+      // Продвижение вперед подогревает пиццу за счет движения!
       this.temperature = Math.min(this.temperature + HEAT_BOOST_ON_FORWARD, 100);
 
       if (this.playerRow > this.maxDistance) {
@@ -1126,9 +1205,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    const destX = this.colToWorldX(targetCol);
     const destY = this.rowToWorldY(targetRow);
-
     this.soundFx.playHop();
 
     // Анимация рывка
@@ -1269,10 +1346,11 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private findPlatformUnderPlayer(lane: Lane): HoverPlatform | null {
-    const px = this.playerContainer.x;
+  private findPlatformUnderPlayer(lane: Lane, checkX?: number): HoverPlatform | null {
+    const px = checkX !== undefined ? checkX : this.playerContainer.x;
     for (const p of lane.platforms) {
-      const halfW = p.width / 2 + 14;
+      // Честный хитбокс бревна: половина ширины + комфортный допуск 22px
+      const halfW = p.width / 2 + 22;
       if (px >= p.x - halfW && px <= p.x + halfW) {
         return p;
       }
@@ -1308,20 +1386,33 @@ export class GameScene extends Phaser.Scene {
     // Обновление полос
     this.updateLanes(dt);
 
-    // Движение на платформе
+    // Движение на бревне (дрейф по воде)
     if (this.currentRidePlatform && !this.isHopping) {
-      this.playerContainer.x += this.currentRidePlatform.speed * this.currentRidePlatform.direction * dt;
-      this.playerCol = Math.round((this.playerContainer.x - TILE_SIZE / 2) / TILE_SIZE);
-
-      if (this.playerContainer.x < 15 || this.playerContainer.x > GAME_WIDTH - 15) {
-        this.handleEnergyFall('⚡ Унесло за пределы энергомагистрали!');
-        return;
-      }
-
+      const p = this.currentRidePlatform;
       const lane = this.lanes.get(this.playerRow);
-      if (lane && !this.findPlatformUnderPlayer(lane)) {
-        this.handleEnergyFall();
-        return;
+
+      if (lane && lane.type === 'energy_canal') {
+        // Проверка уплытия за экран
+        if (this.playerContainer.x < 15 || this.playerContainer.x > GAME_WIDTH - 15) {
+          this.handleEnergyFall('🌊 Унесло течением реки за край экрана!');
+          return;
+        }
+
+        // Дрейф вместе с бревном
+        this.playerContainer.x += p.speed * p.direction * dt;
+        this.playerCol = Phaser.Math.Clamp(
+          Math.round((this.playerContainer.x - TILE_SIZE / 2) / TILE_SIZE),
+          0,
+          GRID_COLS - 1
+        );
+
+        // Проверка, что игрок всё ещё на бревне
+        if (!this.findPlatformUnderPlayer(lane, this.playerContainer.x)) {
+          this.handleEnergyFall();
+          return;
+        }
+      } else {
+        this.currentRidePlatform = null;
       }
     }
 
@@ -1419,30 +1510,38 @@ export class GameScene extends Phaser.Scene {
   }
 
   private checkCollisions(): void {
-    const lane = this.lanes.get(this.playerRow);
-    if (!lane) return;
-
     const px = this.playerContainer.x;
-    const playerHalfW = 14;
+    const py = this.playerContainer.y;
+    const playerRadius = 13;
 
-    if (lane.type === 'road') {
-      for (const v of lane.vehicles) {
-        const vHalfW = v.width / 2 - 4;
-        if (Math.abs(px - v.x) < playerHalfW + vHalfW) {
-          this.handleCrash('🚗 Сбит беспилотным кибер-каром!');
-          return;
+    // Проверяем текущую и соседние полосы с учетом физической высоты курьера
+    for (let r = this.playerRow - 1; r <= this.playerRow + 1; r++) {
+      const lane = this.lanes.get(r);
+      if (!lane) continue;
+
+      // Если курьер физически не находится на этой полосе по высоте — урон не наносится
+      const laneYDist = Math.abs(py - lane.worldY);
+      if (laneYDist > 18) continue;
+
+      if (lane.type === 'road') {
+        for (const v of lane.vehicles) {
+          const vHalfW = v.width / 2 - 4;
+          if (Math.abs(px - v.x) < playerRadius + vHalfW) {
+            this.handleCrash('🚗 Сбит беспилотным кибер-каром!');
+            return;
+          }
         }
       }
-    }
 
-    if (lane.type === 'hyperloop' && lane.hyperloop && lane.hyperloop.active) {
-      const t = lane.hyperloop;
-      const tLeft = Math.min(t.trainX, t.trainX - t.direction * t.totalLength);
-      const tRight = Math.max(t.trainX, t.trainX - t.direction * t.totalLength);
+      if (lane.type === 'hyperloop' && lane.hyperloop && lane.hyperloop.active) {
+        const t = lane.hyperloop;
+        const tLeft = Math.min(t.trainX, t.trainX - t.direction * t.totalLength);
+        const tRight = Math.max(t.trainX, t.trainX - t.direction * t.totalLength);
 
-      if (px >= tLeft - 10 && px <= tRight + 10) {
-        this.handleCrash('⚡ Сбит сверхскоростным поездом гиперлупа!');
-        return;
+        if (px >= tLeft - 8 && px <= tRight + 8) {
+          this.handleCrash('⚡ Сбит сверхскоростным поездом гиперлупа!');
+          return;
+        }
       }
     }
   }
