@@ -64,6 +64,8 @@ interface Lane {
   itemCol?: number;
   itemType?: 'coin' | 'hotpack';
   itemContainer?: Phaser.GameObjects.Container;
+  delivered?: boolean;
+  deliveryText?: Phaser.GameObjects.Text;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -342,9 +344,9 @@ export class GameScene extends Phaser.Scene {
       bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, TILE_SIZE);
 
       // Неоновая площадка передачи заказа
-      bgGraphics.fillStyle(0x10b981, 0.2);
+      bgGraphics.fillStyle(0x10b981, 0.25);
       bgGraphics.fillRect(0, -TILE_SIZE / 2 + 4, GAME_WIDTH, TILE_SIZE - 8);
-      bgGraphics.lineStyle(2, 0x10b981, 0.8);
+      bgGraphics.lineStyle(2, 0x10b981, 0.9);
       bgGraphics.strokeRect(0, -TILE_SIZE / 2 + 4, GAME_WIDTH, TILE_SIZE - 8);
 
       // Светящаяся надпись и разметка
@@ -361,6 +363,7 @@ export class GameScene extends Phaser.Scene {
         fontStyle: 'bold',
       }).setOrigin(0.5);
       container.add(clientText);
+      lane.deliveryText = clientText;
 
     } else if (type === 'sidewalk') {
       // ТРОТУАР / КИБЕР-АЛЛЕЯ
@@ -408,18 +411,19 @@ export class GameScene extends Phaser.Scene {
       }
 
     } else if (type === 'road') {
-      // КИБЕР-МАГИСТРАЛЬ
-      bgGraphics.fillStyle(0x0a0e17, 1);
+      // КИБЕР-МАГИСТРАЛЬ (Темный графитовый асфальт с белой разметкой)
+      bgGraphics.fillStyle(0x111827, 1);
       bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, TILE_SIZE);
 
-      // Неоновые разделительные полосы (Циан / Маджента)
-      bgGraphics.fillStyle(0xec4899, 0.4);
-      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, 2);
-      bgGraphics.fillRect(0, TILE_SIZE / 2 - 2, GAME_WIDTH, 2);
+      // Бордюры дороги (темный сланец)
+      bgGraphics.fillStyle(0x030712, 1);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, 3);
+      bgGraphics.fillRect(0, TILE_SIZE / 2 - 3, GAME_WIDTH, 3);
 
-      bgGraphics.fillStyle(0x38bdf8, 0.8);
-      for (let x = 15; x < GAME_WIDTH; x += 70) {
-        bgGraphics.fillRect(x, -2, 35, 4);
+      // Разметка дороги (пунктирные белые полосы)
+      bgGraphics.fillStyle(0xf1f5f9, 0.85);
+      for (let x = 15; x < GAME_WIDTH; x += 60) {
+        bgGraphics.fillRect(x, -2, 30, 4);
       }
 
       // Беспилотники и кибер-машины
@@ -471,18 +475,35 @@ export class GameScene extends Phaser.Scene {
       }
 
     } else if (type === 'energy_canal') {
-      // ЭНЕРГО-КАНАЛ / БЕЗДНА С ПЛАВАЮЩИМИ ПЛАТФОРМАМИ
-      bgGraphics.fillStyle(0x020617, 1);
+      // ВОДНЫЙ / ЭНЕРГЕТИЧЕСКИЙ КАНАЛ (Яркая лазурно-бирюзовая вода, контрастирующая с черным асфальтом)
+      bgGraphics.fillStyle(0x0284c7, 1);
       bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, TILE_SIZE);
 
-      // Сетка энергетических импульсов на дне
-      bgGraphics.fillStyle(0x1d4ed8, 0.4);
-      for (let x = 10; x < GAME_WIDTH; x += 40) {
-        bgGraphics.fillRect(x, -TILE_SIZE / 2, 2, TILE_SIZE);
+      // Глубокий слой воды
+      bgGraphics.fillStyle(0x0369a1, 0.85);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2 + 5, GAME_WIDTH, TILE_SIZE - 10);
+
+      // Светящиеся водные волны и рябь
+      bgGraphics.fillStyle(0x38bdf8, 0.85);
+      for (let x = 10; x < GAME_WIDTH; x += 55) {
+        bgGraphics.fillRect(x + ((rowIndex * 17) % 35), -14, 28, 4);
+        bgGraphics.fillRect(x + 20, 10, 24, 4);
       }
-      bgGraphics.fillStyle(0x38bdf8, 0.7);
-      for (let x = 10; x < GAME_WIDTH; x += 90) {
-        bgGraphics.fillRect(x + ((rowIndex * 19) % 30), -1, 30, 2);
+      bgGraphics.fillStyle(0x7dd3fc, 0.75);
+      for (let x = 25; x < GAME_WIDTH; x += 75) {
+        bgGraphics.fillRect(x + ((rowIndex * 29) % 40), -2, 20, 3);
+      }
+
+      // Неоновые светящиеся кромки берегов
+      bgGraphics.fillStyle(0x06b6d4, 1);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, 4);
+      bgGraphics.fillRect(0, TILE_SIZE / 2 - 4, GAME_WIDTH, 4);
+
+      // Контрастные предупреждающие полосы на кромке воды
+      bgGraphics.fillStyle(0xf59e0b, 0.95);
+      for (let x = 0; x < GAME_WIDTH; x += 35) {
+        bgGraphics.fillRect(x, -TILE_SIZE / 2, 12, 4);
+        bgGraphics.fillRect(x + 18, TILE_SIZE / 2 - 4, 12, 4);
       }
 
       // Платформы на магнитной подушке (hover-platforms)
@@ -1024,7 +1045,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ТАЧ / СВАЙПЫ
+  // ТАЧ / СВАЙПЫ (ТАП — ПРЫЖОК, СВАЙПЫ — ПОВОРОТ И ШАГ)
   // =========================================================================
   private setupPointerControls(): void {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -1039,7 +1060,8 @@ export class GameScene extends Phaser.Scene {
       const dy = pointer.y - this.touchStartY;
       const dist = Math.hypot(dx, dy);
 
-      if (dist > 30) {
+      // СВАЙПЫ: меняют направление взгляда и совершают шаг
+      if (dist > 25) {
         if (Math.abs(dx) > Math.abs(dy)) {
           if (dx > 0) this.tryMove('right');
           else this.tryMove('left');
@@ -1048,18 +1070,8 @@ export class GameScene extends Phaser.Scene {
           else this.tryMove('down');
         }
       } else {
-        const screenPlayerY = this.playerContainer.y - this.cameras.main.scrollY;
-        const screenPlayerX = this.playerContainer.x;
-        const diffX = pointer.x - screenPlayerX;
-        const diffY = pointer.y - screenPlayerY;
-
-        if (Math.abs(diffX) > Math.abs(diffY)) {
-          if (diffX > 0) this.tryMove('right');
-          else this.tryMove('left');
-        } else {
-          if (diffY < 0) this.tryMove('up');
-          else this.tryMove('down');
-        }
+        // ТАП: прыжок в текущем направлении взгляда курьера!
+        this.tryMove(this.playerFacing);
       }
     });
   }
@@ -1174,9 +1186,10 @@ export class GameScene extends Phaser.Scene {
     const lane = this.lanes.get(this.playerRow);
     if (!lane) return;
 
-    // 1. ДОСТИЖЕНИЕ ТОЧКИ ДОСТАВКИ (КЛИЕНТ)
-    if (lane.type === 'delivery_point') {
-      this.handleDeliveryCompleted();
+    // 1. ДОСТИЖЕНИЕ ТОЧКИ ДОСТАВКИ (КЛИЕНТ) — фиксируется ровно 1 раз на точку!
+    if (lane.type === 'delivery_point' && !lane.delivered) {
+      lane.delivered = true;
+      this.handleDeliveryCompleted(lane);
     }
 
     // 2. Сбор бонуса (Термо-пак или Крипто-чаевые)
@@ -1217,8 +1230,8 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // Доставка заказа клиенту
-  private handleDeliveryCompleted(): void {
+  // Доставка заказа клиенту (однократно за контрольную точку)
+  private handleDeliveryCompleted(lane: Lane): void {
     this.completedDeliveries += 1;
     this.tipsEarned += 100;
     this.temperature = 100; // Новый горячий заказ!
@@ -1230,6 +1243,11 @@ export class GameScene extends Phaser.Scene {
 
     this.showFloatNotice('🎉 ЗАКАЗ ДОСТАВЛЕН! +$100 🍕 НОВЫЙ ЗАКАЗ ВЫДАН!');
     this.cameras.main.flash(350, 16, 185, 129);
+
+    if (lane.deliveryText) {
+      lane.deliveryText.setText('✅ ЗАКАЗ ДОСТАВЛЕН! [ВЫПОЛНЕНО]');
+      lane.deliveryText.setColor('#38bdf8');
+    }
   }
 
   private showFloatNotice(text: string): void {
