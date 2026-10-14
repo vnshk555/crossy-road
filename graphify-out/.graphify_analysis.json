@@ -9,9 +9,7 @@
       "src_game_gamescene_gamescene_handlekeyboard",
       "src_game_gamescene_gamescene_handlepizzafreeze",
       "src_game_gamescene_gamescene_showgameovermodal",
-      "src_game_gamescene_gamescene_showphasenotification",
       "src_game_gamescene_gamescene_spawnneonsparks",
-      "src_game_gamescene_gamescene_triggerphase2",
       "src_game_gamescene_gamescene_update",
       "src_game_gamescene_gamescene_updatecamerafollow",
       "src_game_gamescene_gamescene_updategametimedisplay",
@@ -85,7 +83,9 @@
       "src_game_gamescene_gamescene_findplatformunderplayer",
       "src_game_gamescene_gamescene_handledeliverycompleted",
       "src_game_gamescene_gamescene_onland",
-      "src_game_gamescene_gamescene_showfloatnotice"
+      "src_game_gamescene_gamescene_showfloatnotice",
+      "src_game_gamescene_gamescene_showphasenotification",
+      "src_game_gamescene_gamescene_triggerphase2"
     ],
     "8": [
       "src_game_gamescene_gamescene_create",
@@ -94,14 +94,14 @@
     ]
   },
   "cohesion": {
-    "0": 0.15833333333333333,
+    "0": 0.18681318681318682,
     "1": 0.4,
     "2": 0.2,
     "3": 0.2222222222222222,
     "4": 0.2857142857142857,
     "5": 0.35714285714285715,
     "6": 0.4,
-    "7": 0.6666666666666666,
+    "7": 0.4,
     "8": 0.6666666666666666
   },
   "gods": [

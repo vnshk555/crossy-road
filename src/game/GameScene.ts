@@ -16,7 +16,7 @@ const INITIAL_TEMPERATURE = 100;
 const HEAT_DECAY_PER_SEC = 4.2;
 const HEAT_BOOST_ON_FORWARD = 0.8;
 const CHECKPOINT_INTERVAL = 25; // Каждые 25 метров — новый клиент
-const PHASE_2_DURATION = 60; // 60 игровых секунд до наступления Фазы 2 (без учета пауз)
+const PHASE_2_DELIVERY_THRESHOLD = 1; // Порог доставленных заказов для активации Фазы 2 (Час пик)
 
 type LaneType = 'sidewalk' | 'road' | 'energy_canal' | 'hyperloop' | 'delivery_point';
 
@@ -1598,6 +1598,15 @@ export class GameScene extends Phaser.Scene {
       lane.deliveryText.setText('✅ ЗАКАЗ ДОСТАВЛЕН! [ВЫПОЛНЕНО]');
       lane.deliveryText.setColor('#38bdf8');
     }
+
+    // CR-003: Запуск Фазы 2 по порогу прогресса (число доставленных заказов)
+    if (this.currentPhase === 1 && this.completedDeliveries >= PHASE_2_DELIVERY_THRESHOLD) {
+      this.time.delayedCall(350, () => {
+        if (!this.isDead && this.currentPhase === 1) {
+          this.triggerPhase2();
+        }
+      });
+    }
   }
 
   private showFloatNotice(text: string): void {
@@ -1657,11 +1666,6 @@ export class GameScene extends Phaser.Scene {
     // ИГРОВОЕ ВРЕМЯ (накапливается СТРОГО вне паузы и пока курьер жив)
     this.gameTime += dt;
     this.updateGameTimeDisplay();
-
-    // Проверка смены фазы строго после 60 игровых секунд
-    if (this.currentPhase === 1 && this.gameTime >= PHASE_2_DURATION) {
-      this.triggerPhase2();
-    }
 
     // Клавиатура
     this.handleKeyboard();
