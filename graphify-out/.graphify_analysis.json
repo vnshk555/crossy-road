@@ -1,26 +1,6 @@
 {
   "communities": {
     "0": [
-      "src_game_soundeffects_soundeffects",
-      "src_game_soundeffects_soundeffects_constructor",
-      "src_game_soundeffects_soundeffects_getmuted",
-      "src_game_soundeffects_soundeffects_initctx",
-      "src_game_soundeffects_soundeffects_playbonk",
-      "src_game_soundeffects_soundeffects_playcoin",
-      "src_game_soundeffects_soundeffects_playcrash",
-      "src_game_soundeffects_soundeffects_playdeliverysuccess",
-      "src_game_soundeffects_soundeffects_playfreezewarning",
-      "src_game_soundeffects_soundeffects_playgameover",
-      "src_game_soundeffects_soundeffects_playheatboost",
-      "src_game_soundeffects_soundeffects_playhop",
-      "src_game_soundeffects_soundeffects_playpause",
-      "src_game_soundeffects_soundeffects_playphasechange",
-      "src_game_soundeffects_soundeffects_playrailpass",
-      "src_game_soundeffects_soundeffects_playrailwarning",
-      "src_game_soundeffects_soundeffects_playzap",
-      "src_game_soundeffects_soundeffects_togglemute"
-    ],
-    "1": [
       "src_game_gamescene_gamescene_checkcollisions",
       "src_game_gamescene_gamescene_formatgametime",
       "src_game_gamescene_gamescene_handlecrash",
@@ -38,7 +18,7 @@
       "src_game_gamescene_gamescene_updatetemperaturebar",
       "src_game_gamescene_hoverplatform"
     ],
-    "2": [
+    "1": [
       "src_game_gamescene_gamescene",
       "src_game_gamescene_gamescene_constructor",
       "src_game_gamescene_gamescene_createpickupitem",
@@ -50,7 +30,30 @@
       "src_game_gamescene_gamescene_setupcyberlanevisuals",
       "src_game_gamescene_gamescene_updatelanes"
     ],
+    "2": [
+      "src_game_soundeffects",
+      "src_game_soundeffects_soundeffects",
+      "src_game_soundeffects_soundeffects_constructor",
+      "src_game_soundeffects_soundeffects_getmuted",
+      "src_game_soundeffects_soundeffects_playcoin",
+      "src_game_soundeffects_soundeffects_playfreezewarning",
+      "src_game_soundeffects_soundeffects_playheatboost",
+      "src_game_soundeffects_soundeffects_playrailpass",
+      "src_game_soundeffects_soundeffects_playrailwarning",
+      "src_game_soundeffects_soundeffects_togglemute"
+    ],
     "3": [
+      "src_game_soundeffects_soundeffects_initctx",
+      "src_game_soundeffects_soundeffects_playbonk",
+      "src_game_soundeffects_soundeffects_playcrash",
+      "src_game_soundeffects_soundeffects_playdeliverysuccess",
+      "src_game_soundeffects_soundeffects_playgameover",
+      "src_game_soundeffects_soundeffects_playhop",
+      "src_game_soundeffects_soundeffects_playpause",
+      "src_game_soundeffects_soundeffects_playphasechange",
+      "src_game_soundeffects_soundeffects_playzap"
+    ],
+    "4": [
       "src_game_config",
       "src_game_config_creategame",
       "src_game_gamescene",
@@ -58,10 +61,9 @@
       "src_game_gamescene_lane",
       "src_game_gamescene_lanetype",
       "src_game_gamescene_vehicle",
-      "src_game_soundeffects",
       "src_main"
     ],
-    "4": [
+    "5": [
       "src_game_gamescene_gamescene_bounceblockedmove",
       "src_game_gamescene_gamescene_cleanupoldlanes",
       "src_game_gamescene_gamescene_coltoworldx",
@@ -71,7 +73,7 @@
       "src_game_gamescene_gamescene_rowtoworldy",
       "src_game_gamescene_gamescene_trymove"
     ],
-    "5": [
+    "6": [
       "src_game_gamescene_gamescene_createdpad",
       "src_game_gamescene_gamescene_creategameovermodal",
       "src_game_gamescene_gamescene_createhud",
@@ -79,38 +81,39 @@
       "src_game_gamescene_gamescene_restartgame",
       "src_game_gamescene_gamescene_togglepause"
     ],
-    "6": [
+    "7": [
       "src_game_gamescene_gamescene_findplatformunderplayer",
       "src_game_gamescene_gamescene_handledeliverycompleted",
       "src_game_gamescene_gamescene_onland",
       "src_game_gamescene_gamescene_showfloatnotice"
     ],
-    "7": [
+    "8": [
       "src_game_gamescene_gamescene_create",
       "src_game_gamescene_gamescene_setuppointercontrols",
       "src_game_gamescene_gamescene_updatecameraimmediate"
     ]
   },
   "cohesion": {
-    "0": 0.19607843137254902,
-    "1": 0.15833333333333333,
-    "2": 0.4,
-    "3": 0.25,
-    "4": 0.35714285714285715,
-    "5": 0.4,
-    "6": 0.6666666666666666,
-    "7": 0.6666666666666666
+    "0": 0.15833333333333333,
+    "1": 0.4,
+    "2": 0.2,
+    "3": 0.2222222222222222,
+    "4": 0.2857142857142857,
+    "5": 0.35714285714285715,
+    "6": 0.4,
+    "7": 0.6666666666666666,
+    "8": 0.6666666666666666
   },
   "gods": [
     {
       "id": "src_game_gamescene_gamescene",
       "label": "GameScene",
-      "degree": 49
+      "degree": 48
     },
     {
       "id": "src_game_soundeffects_soundeffects",
       "label": "SoundEffects",
-      "degree": 20
+      "degree": 18
     },
     {
       "id": "src_game_config_creategame",
@@ -154,17 +157,6 @@
       "confidence": "INFERRED",
       "relation": "indirect_call",
       "why": "inferred connection - not explicitly stated in source; bridges separate communities"
-    },
-    {
-      "source": "GameScene",
-      "target": "SoundEffects",
-      "source_files": [
-        "src/game/GameScene.ts",
-        "src/game/SoundEffects.ts"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "references",
-      "why": "bridges separate communities"
     }
   ],
   "tokens": {

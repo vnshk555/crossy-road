@@ -450,10 +450,12 @@ export class GameScene extends Phaser.Scene {
       const direction: 1 | -1 = rowIndex % 2 === 0 ? 1 : -1;
       const baseSpeed = Phaser.Math.Between(140, 260) * speedScale;
       const vehicleCount = Phaser.Math.Between(2, 3);
-      const spacing = GAME_WIDTH / vehicleCount;
+      const roadWrapBound = 140;
+      const roadSpan = GAME_WIDTH + roadWrapBound * 2;
+      const spacing = roadSpan / vehicleCount;
 
       for (let i = 0; i < vehicleCount; i++) {
-        const startX = i * spacing + Phaser.Math.Between(-35, 35);
+        const startX = -roadWrapBound + i * spacing + spacing / 2;
         const r = Math.random();
         let vType: 'drone_car' | 'cyber_coupe' | 'hauler' = 'cyber_coupe';
         let vWidth = 74;
@@ -530,10 +532,12 @@ export class GameScene extends Phaser.Scene {
       const direction: 1 | -1 = rowIndex % 2 === 0 ? 1 : -1;
       const baseSpeed = Phaser.Math.Between(100, 185) * speedScale;
       const count = Phaser.Math.Between(2, 3);
-      const spacing = GAME_WIDTH / count;
+      const platWrapBound = 160;
+      const platSpan = GAME_WIDTH + platWrapBound * 2;
+      const spacing = platSpan / count;
 
       for (let i = 0; i < count; i++) {
-        const startX = i * spacing + Phaser.Math.Between(-30, 30);
+        const startX = -platWrapBound + i * spacing + spacing / 2;
         const pWidth = Phaser.Math.RND.pick([100, 145, 190]);
         const pGraphics = this.add.graphics();
         container.add(pGraphics);
@@ -1234,7 +1238,7 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
     banner.add(title);
 
-    const desc = this.add.text(0, 16, '⚡ ЧАС ПИК: СКОРОСТЬ МАШИН +35%, ПОЕЗДА ХОДЯТ ЧАЩЕ!', {
+    const desc = this.add.text(0, 16, '⚡ ЧАС ПИК: СКОРОСТЬ МАШИН +10%, ПОЕЗДА ХОДЯТ ЧАЩЕ!', {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '13px',
       color: '#e2e8f0',
@@ -1728,7 +1732,7 @@ export class GameScene extends Phaser.Scene {
   private updateLanes(dt: number): void {
     const minRow = this.playerRow - MAX_LANES_BEHIND;
     const maxRow = this.playerRow + LANES_AHEAD;
-    const phaseSpeedMultiplier = this.currentPhase === 2 ? 1.35 : 1.0;
+    const phaseSpeedMultiplier = this.currentPhase === 2 ? 1.10 : 1.0;
 
     for (let r = minRow; r <= maxRow; r++) {
       const lane = this.lanes.get(r);
@@ -1736,27 +1740,77 @@ export class GameScene extends Phaser.Scene {
 
       // Машины
       if (lane.type === 'road') {
+        const roadWrapBound = 140;
+        const roadSpan = GAME_WIDTH + roadWrapBound * 2;
+
         for (const v of lane.vehicles) {
           v.x += v.speed * phaseSpeedMultiplier * v.direction * dt;
-          if (v.direction === 1 && v.x - v.width / 2 > GAME_WIDTH + 80) {
-            v.x = -80 - v.width / 2;
-          } else if (v.direction === -1 && v.x + v.width / 2 < -80) {
-            v.x = GAME_WIDTH + 80 + v.width / 2;
+          if (v.direction === 1 && v.x > GAME_WIDTH + roadWrapBound) {
+            v.x -= roadSpan;
+          } else if (v.direction === -1 && v.x < -roadWrapBound) {
+            v.x += roadSpan;
           }
           this.drawVehicle(v);
+        }
+
+        // Защита от наложения машин: сохранение безопасной дистанции
+        if (lane.vehicles.length > 1) {
+          for (let i = 0; i < lane.vehicles.length; i++) {
+            for (let j = i + 1; j < lane.vehicles.length; j++) {
+              const vA = lane.vehicles[i];
+              const vB = lane.vehicles[j];
+              const safeDist = (vA.width + vB.width) / 2 + 50;
+              const dist = Math.abs(vA.x - vB.x);
+              if (dist < safeDist) {
+                const shift = (safeDist - dist) / 2;
+                if (vA.x < vB.x) {
+                  vA.x -= shift;
+                  vB.x += shift;
+                } else {
+                  vA.x += shift;
+                  vB.x -= shift;
+                }
+              }
+            }
+          }
         }
       }
 
       // Платформы
       if (lane.type === 'energy_canal') {
+        const platWrapBound = 160;
+        const platSpan = GAME_WIDTH + platWrapBound * 2;
+
         for (const p of lane.platforms) {
           p.x += p.speed * p.direction * dt;
-          if (p.direction === 1 && p.x - p.width / 2 > GAME_WIDTH + 100) {
-            p.x = -100 - p.width / 2;
-          } else if (p.direction === -1 && p.x + p.width / 2 < -100) {
-            p.x = GAME_WIDTH + 100 + p.width / 2;
+          if (p.direction === 1 && p.x > GAME_WIDTH + platWrapBound) {
+            p.x -= platSpan;
+          } else if (p.direction === -1 && p.x < -platWrapBound) {
+            p.x += platSpan;
           }
           this.drawHoverPlatform(p);
+        }
+
+        // Защита от наложения платформ
+        if (lane.platforms.length > 1) {
+          for (let i = 0; i < lane.platforms.length; i++) {
+            for (let j = i + 1; j < lane.platforms.length; j++) {
+              const pA = lane.platforms[i];
+              const pB = lane.platforms[j];
+              const safeDist = (pA.width + pB.width) / 2 + 40;
+              const dist = Math.abs(pA.x - pB.x);
+              if (dist < safeDist) {
+                const shift = (safeDist - dist) / 2;
+                if (pA.x < pB.x) {
+                  pA.x -= shift;
+                  pB.x += shift;
+                } else {
+                  pA.x += shift;
+                  pB.x += shift;
+                }
+              }
+            }
+          }
         }
       }
 
