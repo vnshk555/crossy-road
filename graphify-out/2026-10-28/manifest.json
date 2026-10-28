@@ -1,0 +1,82 @@
+{
+  "package.json": {
+    "mtime": 1793164452.9566727,
+    "ast_hash": "541f6b513ecc6a79f5128595729ab25a",
+    "semantic_hash": ""
+  },
+  "src/game/GameScene.ts": {
+    "mtime": 1793167058.5400271,
+    "ast_hash": "4627a705d51307043f6b493bfef71189",
+    "semantic_hash": ""
+  },
+  "src/game/SoundEffects.ts": {
+    "mtime": 1793164452.9603567,
+    "ast_hash": "4150d61b02c7f6d871cbca213196bf98",
+    "semantic_hash": ""
+  },
+  "src/game/config.ts": {
+    "mtime": 1793164452.961882,
+    "ast_hash": "3b6bde829081a8008e8df1d16ed9576a",
+    "semantic_hash": ""
+  },
+  "src/main.ts": {
+    "mtime": 1793164452.961882,
+    "ast_hash": "c999ed8a64d4bcb19d0af2ad1004c6b2",
+    "semantic_hash": ""
+  },
+  "tsconfig.json": {
+    "mtime": 1793164452.9629533,
+    "ast_hash": "76aad79588d277b1ee1e8626da169bae",
+    "semantic_hash": ""
+  },
+  "vite.config.ts": {
+    "mtime": 1793164452.9639776,
+    "ast_hash": "7c5c99a26c59916526a55fd4d537b60c",
+    "semantic_hash": ""
+  },
+  ".github/workflows/deploy.yml": {
+    "mtime": 1793164452.940338,
+    "ast_hash": "9729591eeb3ba5d76a9581e7f5bda0fe",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1793164452.9440024,
+    "ast_hash": "b57f4fc971ba3a251629cb5851895854",
+    "semantic_hash": ""
+  },
+  "ASSIGNMENT_01.md": {
+    "mtime": 1793164452.9448159,
+    "ast_hash": "f09f11a89e636894c9bf460a40c5d25f",
+    "semantic_hash": ""
+  },
+  "CHANGELOG.md": {
+    "mtime": 1793164452.945567,
+    "ast_hash": "70f91c16bb7cfb0e4b28e9a8ec781175",
+    "semantic_hash": ""
+  },
+  "DIARY.md": {
+    "mtime": 1793164452.945567,
+    "ast_hash": "594bb2ca754b0bb0594c38b95a8574c7",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1793164452.9479532,
+    "ast_hash": "f6c2ca0e9ac2766adea9c9a528b33e2a",
+    "semantic_hash": ""
+  },
+  "TEACHER_SETUP.md": {
+    "mtime": 1793164452.9479532,
+    "ast_hash": "b3ebd36e7be7a1c4b9f8546d5ac2ab24",
+    "semantic_hash": ""
+  },
+  "TROUBLESHOOTING.md": {
+    "mtime": 1793164452.948955,
+    "ast_hash": "b83d10d13ab758ac78c2e400adbfe495",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1793164452.955137,
+    "ast_hash": "710fecffbb510db66af78da57782cd4b",
+    "semantic_hash": ""
+  }
+}

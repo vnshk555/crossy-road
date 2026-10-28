@@ -1,0 +1,18 @@
+{
+  "0": "SoundEffects",
+  "1": ".update",
+  "2": "GameScene",
+  "3": "GameScene.ts",
+  "4": ".tryMove",
+  "5": ".createHUD",
+  "6": ".onLand",
+  "7": "На практике",
+  "8": "{\r\n  display: {\r\n    width: GAME_WIDTH,\r\n    height: GAME_HEIGHT,\r\n    tileSize: TILE_SIZE,\r\n    gridCols: GRID_COLS,\r\n    cameraOffsetY: CAMERA_OFFSET_Y,\r\n    hopDuration: HOP_DURATION,\r\n    maxLanesBehind: MAX_LANES_BEHIND,\r\n    lanesAhead: LANES_AHEAD,\r\n  },\r\n  pizza: {\r\n    initialTemperature: INITIAL_TEMPERATURE,\r\n    heatDecayPerSec: HEAT_DECAY_PER_SEC,\r\n    heatBoostOnForward: HEAT_BOOST_ON_FORWARD,\r\n    checkpointInterval: CHECKPOINT_INTERVAL,\r\n    tipPerDelivery: TIP_PER_DELIVERY,\r\n  },\r\n  phases: {\r\n    phase2DeliveryThreshold: PHASE_2_DELIVERY_THRESHOLD,\r\n  },\r\n}",
+  "9": "📔 Дневник разработки и архитектурная документация",
+  "10": "package.json",
+  "11": "Если ничего не работает",
+  "12": "compilerOptions",
+  "13": "Подготовка шаблона преподавателем",
+  "14": "CHANGELOG",
+  "15": "vite.config.ts"
+}

@@ -1013,32 +1013,31 @@ export class GameScene extends Phaser.Scene {
     this.hudContainer.add(this.tipsText);
 
     // Кнопка паузы
-    const pauseBg = this.add.graphics();
-    pauseBg.fillStyle(0x0f172a, 0.85);
-    pauseBg.fillRoundedRect(GAME_WIDTH - 125, 16, 50, 68, 12);
-    pauseBg.lineStyle(2, 0x1e293b, 1);
-    pauseBg.strokeRoundedRect(GAME_WIDTH - 125, 16, 50, 68, 12);
+    const pauseBg = this.add.rectangle(GAME_WIDTH - 100, 50, 50, 68, 0x0f172a, 0.85)
+      .setStrokeStyle(2, 0x1e293b, 1)
+      .setInteractive({ useHandCursor: true });
+    pauseBg.on('pointerdown', () => this.togglePause());
     this.hudContainer.add(pauseBg);
 
     this.pauseBtnText = this.add.text(GAME_WIDTH - 100, 50, '⏸', {
       fontSize: '22px',
-    }).setOrigin(0.5);
-    this.pauseBtnText.setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.pauseBtnText.on('pointerdown', () => this.togglePause());
     this.hudContainer.add(this.pauseBtnText);
 
     // Кнопка звука
-    const muteBg = this.add.graphics();
-    muteBg.fillStyle(0x0f172a, 0.85);
-    muteBg.fillRoundedRect(GAME_WIDTH - 65, 16, 50, 68, 12);
-    muteBg.lineStyle(2, 0x1e293b, 1);
-    muteBg.strokeRoundedRect(GAME_WIDTH - 65, 16, 50, 68, 12);
+    const muteBg = this.add.rectangle(GAME_WIDTH - 40, 50, 50, 68, 0x0f172a, 0.85)
+      .setStrokeStyle(2, 0x1e293b, 1)
+      .setInteractive({ useHandCursor: true });
+    muteBg.on('pointerdown', () => {
+      const m = this.soundFx.toggleMute();
+      this.muteBtnText.setText(m ? '🔇' : '🔊');
+    });
     this.hudContainer.add(muteBg);
 
     this.muteBtnText = this.add.text(GAME_WIDTH - 40, 50, this.soundFx.getMuted() ? '🔇' : '🔊', {
       fontSize: '22px',
-    }).setOrigin(0.5);
-    this.muteBtnText.setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.muteBtnText.on('pointerdown', () => {
       const m = this.soundFx.toggleMute();
       this.muteBtnText.setText(m ? '🔇' : '🔊');
@@ -1177,19 +1176,40 @@ export class GameScene extends Phaser.Scene {
     const btnH = 50;
     const btnY = modalY + 70;
 
-    const btnBg = this.add.graphics();
-    btnBg.fillStyle(0x0284c7, 1);
-    btnBg.fillRoundedRect(modalX - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
-    btnBg.lineStyle(2, 0x38bdf8, 1);
-    btnBg.strokeRoundedRect(modalX - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
-    this.pauseContainer.add(btnBg);
+    const btnBg = this.add.rectangle(modalX, btnY, btnW, btnH, 0x0284c7)
+      .setStrokeStyle(2, 0x38bdf8, 1)
+      .setInteractive({ useHandCursor: true });
 
     const btnText = this.add.text(modalX, btnY, 'ПРОДОЛЖИТЬ ▶', {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '18px',
       color: '#ffffff',
       fontStyle: 'bold',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    const onHover = () => {
+      btnBg.setFillStyle(0x0369a1);
+      btnBg.setScale(1.03);
+      btnText.setScale(1.03);
+    };
+
+    const onOut = () => {
+      btnBg.setFillStyle(0x0284c7);
+      btnBg.setScale(1.0);
+      btnText.setScale(1.0);
+    };
+
+    const onClick = () => this.togglePause();
+
+    btnBg.on('pointerover', onHover);
+    btnBg.on('pointerout', onOut);
+    btnBg.on('pointerdown', onClick);
+
+    btnText.on('pointerover', onHover);
+    btnText.on('pointerout', onOut);
+    btnText.on('pointerdown', onClick);
+
+    this.pauseContainer.add(btnBg);
     this.pauseContainer.add(btnText);
 
     const hint = this.add.text(modalX, modalY + 118, 'или нажми P / ESC', {
@@ -1198,10 +1218,6 @@ export class GameScene extends Phaser.Scene {
       color: '#64748b',
     }).setOrigin(0.5);
     this.pauseContainer.add(hint);
-
-    const btnZone = this.add.zone(modalX, btnY, btnW, btnH).setInteractive({ useHandCursor: true });
-    btnZone.on('pointerdown', () => this.togglePause());
-    this.pauseContainer.add(btnZone);
   }
 
   private togglePause(): void {
@@ -1480,7 +1496,17 @@ export class GameScene extends Phaser.Scene {
         }
         return;
       }
-      if (this.isPaused) return;
+      if (this.isPaused) {
+        if (this.pauseContainer && this.pauseContainer.visible) {
+          const btnX = GAME_WIDTH / 2;
+          const btnY = GAME_HEIGHT / 2 + 70;
+          if (Math.abs(pointer.x - btnX) <= 140 && Math.abs(pointer.y - btnY) <= 35) {
+            this.togglePause();
+            return;
+          }
+        }
+        return;
+      }
       this.touchStartX = pointer.x;
       this.touchStartY = pointer.y;
     });
