@@ -103,6 +103,7 @@ export class GameScene extends Phaser.Scene {
   private tempNumberText!: Phaser.GameObjects.Text;
   private tempBarFill!: Phaser.GameObjects.Graphics;
   private highScoreText!: Phaser.GameObjects.Text;
+  private nextCustomerText!: Phaser.GameObjects.Text;
   private muteBtnText!: Phaser.GameObjects.Text;
   private pauseBtnText!: Phaser.GameObjects.Text;
   private pauseContainer!: Phaser.GameObjects.Container;
@@ -182,6 +183,7 @@ export class GameScene extends Phaser.Scene {
     this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
     this.setupPointerControls();
+    this.showStartMissionNotice();
   }
 
   // =========================================================================
@@ -498,33 +500,51 @@ export class GameScene extends Phaser.Scene {
       }
 
     } else if (type === 'energy_canal') {
-      // ВОДНЫЙ / ЭНЕРГЕТИЧЕСКИЙ КАНАЛ (Яркая лазурно-бирюзовая вода, контрастирующая с черным асфальтом)
-      bgGraphics.fillStyle(0x0284c7, 1);
+      // ВОДНЫЙ / ЭНЕРГЕТИЧЕСКИЙ КАНАЛ (Глубокая лазурно-бирюзовая вода с волнообразной рябью, контрастирующая с асфальтом)
+      bgGraphics.fillStyle(0x024978, 1);
       bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, TILE_SIZE);
 
       // Глубокий слой воды
-      bgGraphics.fillStyle(0x0369a1, 0.85);
+      bgGraphics.fillStyle(0x012b48, 0.9);
       bgGraphics.fillRect(0, -TILE_SIZE / 2 + 5, GAME_WIDTH, TILE_SIZE - 10);
 
-      // Светящиеся водные волны и рябь
-      bgGraphics.fillStyle(0x38bdf8, 0.85);
-      for (let x = 10; x < GAME_WIDTH; x += 55) {
-        bgGraphics.fillRect(x + ((rowIndex * 17) % 35), -14, 28, 4);
-        bgGraphics.fillRect(x + 20, 10, 24, 4);
-      }
-      bgGraphics.fillStyle(0x7dd3fc, 0.75);
-      for (let x = 25; x < GAME_WIDTH; x += 75) {
-        bgGraphics.fillRect(x + ((rowIndex * 29) % 40), -2, 20, 3);
+      // Волнистая текстура течения воды (синусоидальные гребни, исключающие сходство с разметкой дороги)
+      bgGraphics.lineStyle(2, 0x00f0ff, 0.75);
+      for (const yOffset of [-12, 0, 12]) {
+        bgGraphics.beginPath();
+        for (let x = 0; x <= GAME_WIDTH; x += 15) {
+          const waveY = yOffset + Math.sin((x + rowIndex * 35) * 0.08) * 4;
+          if (x === 0) bgGraphics.moveTo(x, waveY);
+          else bgGraphics.lineTo(x, waveY);
+        }
+        bgGraphics.strokePath();
       }
 
-      // Неоновые светящиеся кромки берегов
+      // Вторичные неоновые блики пены на воде
+      bgGraphics.lineStyle(1.5, 0x7dd3fc, 0.6);
+      for (const yOffset of [-6, 6]) {
+        bgGraphics.beginPath();
+        for (let x = 0; x <= GAME_WIDTH; x += 20) {
+          const waveY = yOffset + Math.cos((x + rowIndex * 25) * 0.09) * 3;
+          if (x === 0) bgGraphics.moveTo(x, waveY);
+          else bgGraphics.lineTo(x, waveY);
+        }
+        bgGraphics.strokePath();
+      }
+
+      // Контрастные каменные набережные / парапеты
+      bgGraphics.fillStyle(0x0f172a, 1);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, 5);
+      bgGraphics.fillRect(0, TILE_SIZE / 2 - 5, GAME_WIDTH, 5);
+
+      // Яркие неоновые бордюры безопасности (сигнал опасности падения)
       bgGraphics.fillStyle(0x06b6d4, 1);
-      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, 4);
-      bgGraphics.fillRect(0, TILE_SIZE / 2 - 4, GAME_WIDTH, 4);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2 + 3, GAME_WIDTH, 2);
+      bgGraphics.fillRect(0, TILE_SIZE / 2 - 5, GAME_WIDTH, 2);
 
-      // Контрастные предупреждающие полосы на кромке воды
+      // Предупреждающие желтые шевроны на набережной
       bgGraphics.fillStyle(0xf59e0b, 0.95);
-      for (let x = 0; x < GAME_WIDTH; x += 35) {
+      for (let x = 0; x < GAME_WIDTH; x += 36) {
         bgGraphics.fillRect(x, -TILE_SIZE / 2, 12, 4);
         bgGraphics.fillRect(x + 18, TILE_SIZE / 2 - 4, 12, 4);
       }
@@ -774,6 +794,21 @@ export class GameScene extends Phaser.Scene {
   // Сигнализация гиперлупа
   private drawHyperloopSignal(g: Phaser.GameObjects.Graphics, isBlinking: boolean): void {
     g.clear();
+
+    if (isBlinking) {
+      // Яркий красный лазерный барьер по всей длине рельсов — мгновенно показывает приближение поезда
+      g.fillStyle(0xef4444, 0.28);
+      g.fillRect(0, -16, GAME_WIDTH, 32);
+      g.lineStyle(2, 0xff0055, 0.9);
+      g.lineBetween(0, 0, GAME_WIDTH, 0);
+
+      // Предупреждающие маркеры по всей ширине путей
+      for (let x = 120; x < GAME_WIDTH - 80; x += 180) {
+        g.fillStyle(0xef4444, 0.9);
+        g.fillTriangle(x - 8, 8, x + 8, 8, x, -8);
+      }
+    }
+
     [35, GAME_WIDTH - 35].forEach((sx) => {
       g.fillStyle(0x0f172a, 1);
       g.fillRect(sx - 4, -26, 8, 52);
@@ -783,8 +818,10 @@ export class GameScene extends Phaser.Scene {
       g.fillCircle(sx, -14, 7);
 
       if (isBlinking) {
-        g.fillStyle(0xef4444, 0.35);
-        g.fillCircle(sx, -14, 16);
+        g.fillStyle(0xef4444, 0.5);
+        g.fillCircle(sx, -14, 18);
+        g.fillStyle(0xffffff, 0.9);
+        g.fillCircle(sx, -14, 3);
       }
     });
   }
@@ -913,7 +950,7 @@ export class GameScene extends Phaser.Scene {
     tempBg.strokeRoundedRect(tempPanelX, 16, tempPanelW, 68, 12);
     this.hudContainer.add(tempBg);
 
-    const tempTitle = this.add.text(GAME_WIDTH / 2, 26, '🍕 ТЕМПЕРАТУРА ЗАКАЗА', {
+    const tempTitle = this.add.text(GAME_WIDTH / 2, 26, '🍕 ПИЦЦА ОСТЫВАЕТ! БЕГИ ВПЕРЁД', {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '12px',
       color: '#fbbf24',
@@ -946,22 +983,30 @@ export class GameScene extends Phaser.Scene {
     // 3. ЧАЕВЫЕ И СЧЕТЧИК ДОСТАВОК (справа)
     const statsBg = this.add.graphics();
     statsBg.fillStyle(0x0f172a, 0.85);
-    statsBg.fillRoundedRect(GAME_WIDTH - 305, 16, 170, 68, 12);
+    statsBg.fillRoundedRect(GAME_WIDTH - 315, 16, 180, 68, 12);
     statsBg.lineStyle(2, 0x1e293b, 1);
-    statsBg.strokeRoundedRect(GAME_WIDTH - 305, 16, 170, 68, 12);
+    statsBg.strokeRoundedRect(GAME_WIDTH - 315, 16, 180, 68, 12);
     this.hudContainer.add(statsBg);
 
-    this.deliveryCountText = this.add.text(GAME_WIDTH - 293, 24, '🎯 Доставлено: 0', {
+    this.deliveryCountText = this.add.text(GAME_WIDTH - 303, 21, '🎯 Заказов: 0', {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '12px',
+      fontSize: '11px',
       color: '#10b981',
       fontStyle: 'bold',
     });
     this.hudContainer.add(this.deliveryCountText);
 
-    this.tipsText = this.add.text(GAME_WIDTH - 293, 42, `💵 $${this.tipsEarned}`, {
+    this.nextCustomerText = this.add.text(GAME_WIDTH - 303, 36, `📍 До двери: ${CHECKPOINT_INTERVAL} м`, {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '24px',
+      fontSize: '12px',
+      color: '#38bdf8',
+      fontStyle: 'bold',
+    });
+    this.hudContainer.add(this.nextCustomerText);
+
+    this.tipsText = this.add.text(GAME_WIDTH - 303, 52, `💵 $${this.tipsEarned}`, {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '20px',
       color: '#facc15',
       fontStyle: 'bold',
     });
@@ -1270,6 +1315,60 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // Стартовое уведомление о задаче курьера
+  private showStartMissionNotice(): void {
+    const banner = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20);
+    banner.setScrollFactor(0);
+    banner.setDepth(1500);
+
+    const bW = 480;
+    const bH = 84;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0f172a, 0.94);
+    bg.fillRoundedRect(-bW / 2, -bH / 2, bW, bH, 14);
+    bg.lineStyle(2, 0x10b981, 0.9);
+    bg.strokeRoundedRect(-bW / 2, -bH / 2, bW, bH, 14);
+    banner.add(bg);
+
+    const title = this.add.text(0, -16, '🍕 ДОСТАВЬ ЗАКАЗ ГОРЯЧИМ! 🍕', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '20px',
+      color: '#facc15',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    banner.add(title);
+
+    const desc = this.add.text(0, 16, `🎯 Клиент ждёт через ${CHECKPOINT_INTERVAL} м • Не дай пицце остыть!`, {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '14px',
+      color: '#e2e8f0',
+    }).setOrigin(0.5);
+    banner.add(desc);
+
+    banner.setScale(0.85);
+    banner.setAlpha(0);
+
+    this.tweens.add({
+      targets: banner,
+      scale: 1,
+      alpha: 1,
+      duration: 250,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(2200, () => {
+          this.tweens.add({
+            targets: banner,
+            y: banner.y - 30,
+            alpha: 0,
+            duration: 350,
+            ease: 'Power2',
+            onComplete: () => banner.destroy(),
+          });
+        });
+      },
+    });
+  }
+
   // Окно Game Over (Смена завершена)
   private createGameOverModal(): void {
     this.gameOverContainer = this.add.container(0, 0);
@@ -1326,19 +1425,40 @@ export class GameScene extends Phaser.Scene {
     const btnH = 54;
     const btnY = modalY + 85;
 
-    const btnBg = this.add.graphics();
-    btnBg.fillStyle(0x0284c7, 1);
-    btnBg.fillRoundedRect(modalX - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
-    btnBg.lineStyle(2, 0x38bdf8, 1);
-    btnBg.strokeRoundedRect(modalX - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
-    this.gameOverContainer.add(btnBg);
+    const btnBg = this.add.rectangle(modalX, btnY, btnW, btnH, 0x0284c7)
+      .setStrokeStyle(2, 0x38bdf8, 1)
+      .setInteractive({ useHandCursor: true });
 
     const btnText = this.add.text(modalX, btnY, 'ВЗЯТЬ НОВЫЙ ЗАКАЗ', {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '18px',
       color: '#ffffff',
       fontStyle: 'bold',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    const onHover = () => {
+      btnBg.setFillStyle(0x0369a1);
+      btnBg.setScale(1.03);
+      btnText.setScale(1.03);
+    };
+
+    const onOut = () => {
+      btnBg.setFillStyle(0x0284c7);
+      btnBg.setScale(1.0);
+      btnText.setScale(1.0);
+    };
+
+    const onClick = () => this.restartGame();
+
+    btnBg.on('pointerover', onHover);
+    btnBg.on('pointerout', onOut);
+    btnBg.on('pointerdown', onClick);
+
+    btnText.on('pointerover', onHover);
+    btnText.on('pointerout', onOut);
+    btnText.on('pointerdown', onClick);
+
+    this.gameOverContainer.add(btnBg);
     this.gameOverContainer.add(btnText);
 
     const hint = this.add.text(modalX, modalY + 135, 'или нажми ПРОБЕЛ / W', {
@@ -1347,10 +1467,6 @@ export class GameScene extends Phaser.Scene {
       color: '#64748b',
     }).setOrigin(0.5);
     this.gameOverContainer.add(hint);
-
-    const btnZone = this.add.zone(modalX, btnY, btnW, btnH).setInteractive({ useHandCursor: true });
-    btnZone.on('pointerdown', () => this.restartGame());
-    this.gameOverContainer.add(btnZone);
   }
 
   // =========================================================================
@@ -1358,7 +1474,13 @@ export class GameScene extends Phaser.Scene {
   // =========================================================================
   private setupPointerControls(): void {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (this.isDead || this.isPaused) return;
+      if (this.isDead) {
+        if (this.gameOverContainer && this.gameOverContainer.visible) {
+          this.restartGame();
+        }
+        return;
+      }
+      if (this.isPaused) return;
       this.touchStartX = pointer.x;
       this.touchStartY = pointer.y;
     });
@@ -1400,7 +1522,9 @@ export class GameScene extends Phaser.Scene {
     else if (dir === 'left') targetCol -= 1;
     else if (dir === 'right') targetCol += 1;
 
-    if (targetRow < 0) {
+    // Ограничение движения назад: нельзя уходить более чем на 3 ряда назад от достигнутого рекорда
+    const minAllowedRow = Math.max(0, this.maxDistance - 3);
+    if (targetRow < minAllowedRow) {
       this.soundFx.playBonk();
       return;
     }
@@ -1463,6 +1587,10 @@ export class GameScene extends Phaser.Scene {
     this.currentRidePlatform = null;
     this.playerCol = targetCol;
     this.playerRow = targetRow;
+
+    const distToClient = CHECKPOINT_INTERVAL - (this.playerRow % CHECKPOINT_INTERVAL);
+    this.nextCustomerText.setText(`📍 До двери: ${distToClient} м`);
+    this.nextCustomerText.setColor(distToClient <= 5 ? '#22c55e' : '#38bdf8');
 
     if (dir === 'up') {
       // Продвижение вперед подогревает пиццу за счет движения!
@@ -1588,7 +1716,9 @@ export class GameScene extends Phaser.Scene {
     this.temperature = 100; // Новый горячий заказ!
     localStorage.setItem('cyber_courier_tips', String(this.tipsEarned));
 
-    this.deliveryCountText.setText(`🎯 Доставлено: ${this.completedDeliveries}`);
+    this.deliveryCountText.setText(`🎯 Заказов: ${this.completedDeliveries}`);
+    this.nextCustomerText.setText(`📍 До двери: ${CHECKPOINT_INTERVAL} м`);
+    this.nextCustomerText.setColor('#38bdf8');
     this.tipsText.setText(`💵 $${this.tipsEarned}`);
     this.soundFx.playDeliverySuccess();
 
