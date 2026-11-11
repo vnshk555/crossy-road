@@ -30,18 +30,36 @@ export const GAME_CONFIG = {
     platformSafeDistanceBuffer: 40,
   },
   phases: {
-    phase2DeliveryThreshold: 1, // Порог доставленных заказов для активации Фазы 2 (Час пик)
+    phase2DeliveryThreshold: 1, // Фаза 2: Час пик — после 1-й доставки
+    phase3DeliveryThreshold: 3, // Фаза 3: Неоновый дождь — после 3-й доставки
+    phase4DeliveryThreshold: 5, // Фаза 4: Кибер-экопарк — после 5-й доставки
     phase1: {
       vehicleSpeedMultiplier: 1.0,
       hyperloopChance: 0.76,
       hyperloopMinWait: 4.5,
       hyperloopMaxWait: 9.0,
+      heatDecayMultiplier: 1.0,
     },
     phase2: {
-      vehicleSpeedMultiplier: 1.10, // Мягкое ускорение +10%
+      vehicleSpeedMultiplier: 1.10, // Час пик: +10% скорость
       hyperloopChance: 0.82,
       hyperloopMinWait: 2.5,
       hyperloopMaxWait: 5.5,
+      heatDecayMultiplier: 1.0,
+    },
+    phase3: {
+      vehicleSpeedMultiplier: 1.10, // Ночной дождь: скорость машин та же
+      hyperloopChance: 0.82,
+      hyperloopMinWait: 2.5,
+      hyperloopMaxWait: 5.5,
+      heatDecayMultiplier: 1.15, // Ночью прохладнее — пицца чуть быстрее остывает
+    },
+    phase4: {
+      vehicleSpeedMultiplier: 1.10,
+      hyperloopChance: 0.82,
+      hyperloopMinWait: 2.5,
+      hyperloopMaxWait: 5.5,
+      heatDecayMultiplier: 0.6, // Солнечный купол экопарка — пицца остывает медленнее!
     },
   },
 } as const;
@@ -67,6 +85,8 @@ export const {
   },
   phases: {
     phase2DeliveryThreshold: PHASE_2_DELIVERY_THRESHOLD,
+    phase3DeliveryThreshold: PHASE_3_DELIVERY_THRESHOLD,
+    phase4DeliveryThreshold: PHASE_4_DELIVERY_THRESHOLD,
   },
 } = GAME_CONFIG;
 

@@ -14,5 +14,6 @@
   "12": "compilerOptions",
   "13": "Подготовка шаблона преподавателем",
   "14": "CHANGELOG",
-  "15": "vite.config.ts"
+  "15": "vite.config.ts",
+  "16": "{\n  display: {\n    width: GAME_WIDTH,\n    height: GAME_HEIGHT,\n    tileSize: TILE_SIZE,\n    gridCols: GRID_COLS,\n    cameraOffsetY: CAMERA_OFFSET_Y,\n    hopDuration: HOP_DURATION,\n    maxLanesBehind: MAX_LANES_BEHIND,\n    lanesAhead: LANES_AHEAD,\n  },\n  pizza: {\n    initialTemperature: INITIAL_TEMPERATURE,\n    heatDecayPerSec: HEAT_DECAY_PER_SEC,\n    heatBoostOnForward: HEAT_BOOST_ON_FORWARD,\n    checkpointInterval: CHECKPOINT_INTERVAL,\n    tipPerDelivery: TIP_PER_DELIVERY,\n  },\n  phases: {\n    phase2DeliveryThreshold: PHASE_2_DELIVERY_THRESHOLD,\n    phase3DeliveryThreshold: PHASE_3_DELIVERY_THRESHOLD,\n    phase4DeliveryThreshold: PHASE_4_DELIVERY_THRESHOLD,\n  },\n}"
 }

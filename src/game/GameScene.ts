@@ -15,10 +15,28 @@ import {
   HEAT_BOOST_ON_FORWARD,
   CHECKPOINT_INTERVAL,
   PHASE_2_DELIVERY_THRESHOLD,
+  PHASE_3_DELIVERY_THRESHOLD,
+  PHASE_4_DELIVERY_THRESHOLD,
   TIP_PER_DELIVERY,
 } from './config';
 
-type LaneType = 'sidewalk' | 'road' | 'energy_canal' | 'hyperloop' | 'delivery_point';
+type LaneType = 'sidewalk' | 'road' | 'energy_canal' | 'hyperloop' | 'delivery_point' | 'lotus_pond' | 'holo_barrier';
+
+interface CleanBot {
+  x: number;
+  speed: number;
+  direction: 1 | -1;
+  graphics: Phaser.GameObjects.Graphics;
+}
+
+interface HoloBarrierState {
+  /** true = барьер активен (блокирует проход) */
+  active: boolean;
+  /** таймер до следующего переключения (сек) */
+  switchTimer: number;
+  graphics: Phaser.GameObjects.Graphics;
+}
+
 
 interface Vehicle {
   x: number;
@@ -63,10 +81,19 @@ interface Lane {
   platforms: HoverPlatform[];
   hyperloop?: HyperloopState;
   itemCol?: number;
-  itemType?: 'coin' | 'hotpack';
+  itemType?: 'coin' | 'hotpack' | 'coffee';
   itemContainer?: Phaser.GameObjects.Container;
   delivered?: boolean;
   deliveryText?: Phaser.GameObjects.Text;
+  /** Дроны-уборщики (Фаза 3, тротуар) */
+  cleanBots: CleanBot[];
+  /** Лужа на тротуаре (Фаза 3): колонка лужи или -1 */
+  puddleCol?: number;
+  puddleGraphics?: Phaser.GameObjects.Graphics;
+  /** Голо-барьер (Фаза 4) */
+  holoBarrier?: HoloBarrierState;
+  /** Лотосовые платформы (Фаза 4, lotus_pond) */
+  lotusPads: HoverPlatform[];
 }
 
 export class GameScene extends Phaser.Scene {
@@ -113,10 +140,15 @@ export class GameScene extends Phaser.Scene {
 
   // Игровое время и фазы сложности
   private gameTime = 0; // Чистое игровое время (накапливается по dt, не идёт на паузе!)
-  private currentPhase: 1 | 2 = 1;
+  private currentPhase: 1 | 2 | 3 | 4 = 1;
   private timeText!: Phaser.GameObjects.Text;
   private phaseText!: Phaser.GameObjects.Text;
   private phasePanelBg!: Phaser.GameObjects.Graphics;
+
+  /** Фоновый оверлей ночного дождя (Фаза 3) */
+  private rainOverlay?: Phaser.GameObjects.Graphics;
+  /** Фоновый оверлей зелёного экопарка (Фаза 4) */
+  private ecoOverlay?: Phaser.GameObjects.Graphics;
 
   // Ввод
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -151,6 +183,8 @@ export class GameScene extends Phaser.Scene {
     this.playerCol = Math.floor(GRID_COLS / 2);
     this.playerRow = 1;
     this.playerFacing = 'up';
+    this.rainOverlay = undefined;
+    this.ecoOverlay = undefined;
 
     // Создаем стартовые полосы кибер-города
     for (let r = -2; r <= LANES_AHEAD; r++) {
@@ -317,9 +351,17 @@ export class GameScene extends Phaser.Scene {
       const prevLane = this.lanes.get(rowIndex - 1);
       const prevType = prevLane ? prevLane.type : 'sidewalk';
 
-      const phaseConfig = this.currentPhase === 2 ? GAME_CONFIG.phases.phase2 : GAME_CONFIG.phases.phase1;
+      const phaseConfig = this.getPhaseConfig();
       const hyperloopChance = phaseConfig.hyperloopChance;
-      if (prevType === 'road' && rand < 0.48) {
+
+      // В Фазах 3 и 4 добавляются новые типы полос
+      if (this.currentPhase >= 3 && prevType === 'lotus_pond' && rand < 0.42) {
+        type = 'lotus_pond';
+      } else if (this.currentPhase >= 4 && rand < 0.12 && rowIndex > 10) {
+        type = 'holo_barrier';
+      } else if (this.currentPhase >= 3 && rand < 0.18 && rowIndex > 8) {
+        type = 'lotus_pond';
+      } else if (prevType === 'road' && rand < 0.48) {
         type = 'road';
       } else if (prevType === 'energy_canal' && rand < 0.42) {
         type = 'energy_canal';
@@ -343,6 +385,8 @@ export class GameScene extends Phaser.Scene {
       obstacles: new Set<number>(),
       vehicles: [],
       platforms: [],
+      cleanBots: [],
+      lotusPads: [],
     };
 
     this.setupCyberLaneVisuals(lane);
@@ -353,6 +397,14 @@ export class GameScene extends Phaser.Scene {
     }
 
     return lane;
+  }
+
+  /** Возвращает конфигурацию текущей фазы */
+  private getPhaseConfig() {
+    if (this.currentPhase === 4) return GAME_CONFIG.phases.phase4;
+    if (this.currentPhase === 3) return GAME_CONFIG.phases.phase3;
+    if (this.currentPhase === 2) return GAME_CONFIG.phases.phase2;
+    return GAME_CONFIG.phases.phase1;
   }
 
   private setupCyberLaneVisuals(lane: Lane): void {
@@ -416,19 +468,60 @@ export class GameScene extends Phaser.Scene {
           }
         }
 
-        // Спавн бонусов: Термо-пак 🔥 или Крипто-чаевые 🪙
+        // Спавн бонусов: Термо-пак 🔥, Крипто-чаевые 🪙, или Кофе ☕ (Фаза 3+)
         const itemRoll = Math.random();
         if (itemRoll < 0.35) {
           const itemCol = Phaser.Math.Between(1, GRID_COLS - 2);
           if (!lane.obstacles.has(itemCol)) {
             lane.itemCol = itemCol;
-            lane.itemType = itemRoll < 0.18 ? 'hotpack' : 'coin';
+            if (this.currentPhase >= 3 && itemRoll < 0.09) {
+              lane.itemType = 'coffee';
+            } else if (itemRoll < 0.18) {
+              lane.itemType = 'hotpack';
+            } else {
+              lane.itemType = 'coin';
+            }
             lane.itemContainer = this.createPickupItem(
               this.colToWorldX(itemCol),
               0,
               lane.itemType
             );
             container.add(lane.itemContainer);
+          }
+        }
+
+        // Фаза 3: лужи на тротуаре (скольжение) + дроны-уборщики
+        if (this.currentPhase >= 3 && rowIndex > 1) {
+          // Лужа
+          if (Math.random() < 0.4) {
+            const puddleCol = Phaser.Math.Between(0, GRID_COLS - 1);
+            if (!lane.obstacles.has(puddleCol)) {
+              lane.puddleCol = puddleCol;
+              const px = this.colToWorldX(puddleCol);
+              const pg = this.add.graphics();
+              pg.fillStyle(0x818cf8, 0.55);
+              pg.fillEllipse(px, 0, 44, 20);
+              pg.fillStyle(0xa5b4fc, 0.4);
+              pg.fillEllipse(px - 6, -3, 14, 8);
+              container.add(pg);
+              lane.puddleGraphics = pg;
+            }
+          }
+
+          // Дрон-уборщик
+          if (Math.random() < 0.35) {
+            const botDir: 1 | -1 = rowIndex % 2 === 0 ? 1 : -1;
+            const botX = botDir === 1 ? -60 : GAME_WIDTH + 60;
+            const botG = this.add.graphics();
+            container.add(botG);
+            const bot: CleanBot = {
+              x: botX,
+              speed: Phaser.Math.Between(45, 75),
+              direction: botDir,
+              graphics: botG,
+            };
+            this.drawCleanBot(bot);
+            lane.cleanBots.push(bot);
           }
         }
       }
@@ -605,6 +698,86 @@ export class GameScene extends Phaser.Scene {
         graphics: trainGraphics,
         signalGraphics,
       };
+
+    } else if (type === 'lotus_pond') {
+      // ===== ФАЗА 4: БИО-ПРУД С КУВШИНКАМИ (Кибер-экопарк) =====
+      // Спокойная биолюминесцентная вода с крупными лотосовыми платформами
+      bgGraphics.fillStyle(0x064e3b, 1);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, TILE_SIZE);
+
+      bgGraphics.fillStyle(0x065f46, 0.85);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2 + 4, GAME_WIDTH, TILE_SIZE - 8);
+
+      // Мягкая биолюминесцентная рябь
+      bgGraphics.lineStyle(1.5, 0x34d399, 0.5);
+      for (const yOffset of [-10, 0, 10]) {
+        bgGraphics.beginPath();
+        for (let x = 0; x <= GAME_WIDTH; x += 20) {
+          const waveY = yOffset + Math.sin((x + rowIndex * 25) * 0.07) * 3;
+          if (x === 0) bgGraphics.moveTo(x, waveY);
+          else bgGraphics.lineTo(x, waveY);
+        }
+        bgGraphics.strokePath();
+      }
+
+      // Берега с зелёной травой
+      bgGraphics.fillStyle(0x166534, 1);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, 5);
+      bgGraphics.fillRect(0, TILE_SIZE / 2 - 5, GAME_WIDTH, 5);
+      bgGraphics.fillStyle(0x22c55e, 0.7);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, 2);
+      bgGraphics.fillRect(0, TILE_SIZE / 2 - 2, GAME_WIDTH, 2);
+
+      // Лотосовые платформы — крупнее обычных ховер-платформ, тихий дрейф
+      const direction: 1 | -1 = rowIndex % 2 === 0 ? 1 : -1;
+      const baseSpeed = Phaser.Math.Between(55, 100) * speedScale;
+      const count = Phaser.Math.Between(3, 4);
+      const wrapBound = 160;
+      const span = GAME_WIDTH + wrapBound * 2;
+      const spacing = span / count;
+
+      for (let i = 0; i < count; i++) {
+        const startX = -wrapBound + i * spacing + spacing / 2;
+        const pWidth = Phaser.Math.RND.pick([120, 160, 200]);
+        const pGraphics = this.add.graphics();
+        container.add(pGraphics);
+
+        const p: HoverPlatform = {
+          x: startX,
+          width: pWidth,
+          height: 36,
+          speed: baseSpeed,
+          direction,
+          graphics: pGraphics,
+        };
+
+        this.drawLotusPad(p);
+        lane.lotusPads.push(p);
+      }
+
+    } else if (type === 'holo_barrier') {
+      // ===== ФАЗА 4: ГОЛО-БАРЬЕР (Кибер-экопарк) =====
+      // Тротуар со светящимися периодическими барьерами как светофор
+      bgGraphics.fillStyle(0x0d1f12, 1);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, TILE_SIZE);
+
+      // Плитка экопарка
+      bgGraphics.fillStyle(0x14532d, 0.7);
+      for (let x = 0; x < GAME_WIDTH; x += 60) {
+        bgGraphics.fillRect(x, -TILE_SIZE / 2, 2, TILE_SIZE);
+      }
+      bgGraphics.fillStyle(0x22c55e, 0.25);
+      bgGraphics.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, 2);
+
+      const barrierGraphics = this.add.graphics();
+      container.add(barrierGraphics);
+
+      lane.holoBarrier = {
+        active: true,
+        switchTimer: Phaser.Math.FloatBetween(1.5, 2.5),
+        graphics: barrierGraphics,
+      };
+      this.drawHoloBarrier(barrierGraphics, true);
     }
   }
 
@@ -636,8 +809,107 @@ export class GameScene extends Phaser.Scene {
     return g;
   }
 
-  // Отрисовка бонуса (термо-пак или монета)
-  private createPickupItem(x: number, y: number, itemType: 'coin' | 'hotpack'): Phaser.GameObjects.Container {
+  /** Отрисовка лотосовой кувшинки-платформы (Фаза 4, bio-пруд) */
+  private drawLotusPad(p: HoverPlatform): void {
+    const g = p.graphics;
+    g.clear();
+
+    const halfW = p.width / 2;
+
+    // Тень в воде
+    g.fillStyle(0x022c22, 0.6);
+    g.fillEllipse(p.x, 4, p.width + 8, 22);
+
+    // Лист кувшинки (тёмно-зелёный)
+    g.fillStyle(0x15803d, 1);
+    g.fillEllipse(p.x, 0, p.width, 32);
+
+    // Светлый внутренний лист
+    g.fillStyle(0x16a34a, 1);
+    g.fillEllipse(p.x, -1, p.width - 14, 24);
+
+    // Прожилки листа
+    g.lineStyle(1, 0x4ade80, 0.6);
+    g.lineBetween(p.x, -12, p.x, 12);
+    g.lineBetween(p.x - halfW + 10, 0, p.x + halfW - 10, 0);
+    g.lineBetween(p.x - halfW * 0.6, -8, p.x + halfW * 0.6, -8);
+    g.lineBetween(p.x - halfW * 0.6, 8, p.x + halfW * 0.6, 8);
+
+    // Цветок (розово-белый) по центру
+    g.fillStyle(0xfda4af, 0.9);
+    g.fillCircle(p.x, -1, 8);
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(p.x, -1, 4);
+    g.fillStyle(0xfbbf24, 1);
+    g.fillCircle(p.x, -1, 2);
+
+    // Биолюминесцентное свечение по контуру листа
+    g.lineStyle(2, 0x4ade80, 0.5);
+    g.strokeEllipse(p.x, 0, p.width, 32);
+  }
+
+  /** Отрисовка дрона-уборщика (Фаза 3) */
+  private drawCleanBot(bot: CleanBot): void {
+    const g = bot.graphics;
+    g.clear();
+
+    const x = bot.x;
+    // Корпус
+    g.fillStyle(0x334155, 1);
+    g.fillRoundedRect(x - 16, -12, 32, 24, 6);
+
+    // Экран
+    g.fillStyle(0x818cf8, 1);
+    g.fillRoundedRect(x - 10, -8, 20, 12, 3);
+
+    // Мигающий индикатор
+    g.fillStyle(0xa5f3fc, 1);
+    g.fillCircle(x + 10, -8, 3);
+
+    // Щётка
+    g.fillStyle(0x64748b, 1);
+    g.fillRect(x - 14, 11, 28, 4);
+
+    // Колёсики
+    g.fillStyle(0x1e293b, 1);
+    g.fillCircle(x - 10, 14, 4);
+    g.fillCircle(x + 10, 14, 4);
+    g.fillStyle(0x475569, 1);
+    g.fillCircle(x - 10, 14, 2);
+    g.fillCircle(x + 10, 14, 2);
+  }
+
+  /** Отрисовка голо-барьера (Фаза 4) */
+  private drawHoloBarrier(g: Phaser.GameObjects.Graphics, active: boolean): void {
+    g.clear();
+    if (!active) {
+      // Выключен — только маячки
+      for (const bx of [60, 300, 540, 780, 900]) {
+        g.fillStyle(0x166534, 1);
+        g.fillCircle(bx, 0, 5);
+        g.fillStyle(0x4ade80, 0.5);
+        g.fillCircle(bx, 0, 8);
+      }
+      return;
+    }
+    // Активный барьер — зелёная стена из столбов
+    g.fillStyle(0x4ade80, 0.15);
+    g.fillRect(0, -TILE_SIZE / 2, GAME_WIDTH, TILE_SIZE);
+    g.lineStyle(2, 0x22c55e, 0.9);
+    g.lineBetween(0, 0, GAME_WIDTH, 0);
+
+    for (const bx of [60, 300, 540, 780, 900]) {
+      g.fillStyle(0x22c55e, 1);
+      g.fillCircle(bx, 0, 5);
+      g.fillStyle(0x4ade80, 0.4);
+      g.fillCircle(bx, 0, 14);
+      g.lineStyle(2, 0x4ade80, 0.8);
+      g.lineBetween(bx, -TILE_SIZE / 2, bx, TILE_SIZE / 2);
+    }
+  }
+
+  // Отрисовка бонуса (термо-пак, монета, или кофе)
+  private createPickupItem(x: number, y: number, itemType: 'coin' | 'hotpack' | 'coffee'): Phaser.GameObjects.Container {
     const c = this.add.container(x, y);
 
     const shadow = this.add.graphics();
@@ -656,6 +928,26 @@ export class GameScene extends Phaser.Scene {
       item.fillTriangle(-6, 6, 6, 6, 0, -8);
       item.fillStyle(0xffffff, 0.9);
       item.fillCircle(0, 2, 3);
+    } else if (itemType === 'coffee') {
+      // КОФЕ / БАТАРЕЙКА ☕ (Фаза 3: защита от холода)
+      item.fillStyle(0x92400e, 1);
+      item.fillRoundedRect(-10, -12, 20, 22, 4);
+      // Пар
+      item.lineStyle(2, 0xe7e5e4, 0.8);
+      item.beginPath();
+      item.moveTo(-4, -14);
+      item.lineTo(-4, -20);
+      item.strokePath();
+      item.beginPath();
+      item.moveTo(4, -14);
+      item.lineTo(4, -20);
+      item.strokePath();
+      // Кофе внутри
+      item.fillStyle(0x451a03, 1);
+      item.fillRoundedRect(-8, -10, 16, 14, 3);
+      // Ручка
+      item.lineStyle(2, 0x92400e, 1);
+      item.strokeRect(10, -6, 6, 10);
     } else {
       // КРИПТО-ЧАЕВЫЕ
       item.fillStyle(0x06b6d4, 1);
@@ -1230,8 +1522,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.pauseAll();
       this.pauseBtnText.setText('▶');
       const tempIcon = this.temperature < 35 ? '❄️' : '🔥';
-      const phaseBadge = this.currentPhase === 2 ? '⚡ ФАЗА 2' : 'ФАЗА 1';
-      this.pauseStatsText.setText(
+      const phaseBadge = this.getPhaseBadge();      this.pauseStatsText.setText(
         `⏱️ Игровое время: ${this.formatGameTime(this.gameTime)} (${phaseBadge})\n` +
         `Дистанция: ${this.maxDistance} м  |  Рекорд: ${this.highScore} м\n` +
         `${tempIcon} Температура заказа: ${Math.round(this.temperature)}°C\n` +
@@ -1274,33 +1565,106 @@ export class GameScene extends Phaser.Scene {
     this.phaseText.setText('⚡ ФАЗА 2');
     this.phaseText.setColor('#f59e0b');
 
-    // Экранное уведомление о старте Фазы 2
-    this.showPhaseNotification();
+    this.showPhaseNotification(
+      '⚠️ НАЧАЛАСЬ ФАЗА 2! ⚠️',
+      '⚡ ЧАС ПИК: СКОРОСТЬ МАШИН +10%, ПОЕЗДА ХОДЯТ ЧАЩЕ!',
+      0xf59e0b
+    );
   }
 
-  private showPhaseNotification(): void {
+  private triggerPhase3(): void {
+    this.currentPhase = 3;
+    this.soundFx.playPhaseChange();
+    // Синеватая вспышка — начало ночного дождя
+    this.cameras.main.flash(500, 67, 56, 202);
+    this.cameras.main.shake(300, 0.007);
+
+    // HUD-панель фазы — фиолетовая
+    this.phasePanelBg.clear();
+    this.phasePanelBg.fillStyle(0x0f172a, 0.95);
+    this.phasePanelBg.fillRoundedRect(170, 16, 130, 68, 12);
+    this.phasePanelBg.lineStyle(2, 0x818cf8, 1);
+    this.phasePanelBg.strokeRoundedRect(170, 16, 130, 68, 12);
+
+    this.phaseText.setText('🌧️ ФАЗА 3');
+    this.phaseText.setColor('#a5b4fc');
+
+    // Оверлей ночного дождя — тёмно-синяя вуаль
+    if (!this.rainOverlay) {
+      this.rainOverlay = this.add.graphics();
+      this.rainOverlay.setScrollFactor(0);
+      this.rainOverlay.setDepth(5);
+      this.rainOverlay.fillStyle(0x0d0a2e, 0.28);
+      this.rainOverlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
+
+    this.showPhaseNotification(
+      '🌧️ ФАЗА 3: НЕОНОВЫЙ ДОЖДЬ 🌧️',
+      '🌧️ НОЧЬ: Лужи ускоряют рывок вперёд! Пицца остывает чуть быстрее.',
+      0x818cf8
+    );
+  }
+
+  private triggerPhase4(): void {
+    this.currentPhase = 4;
+    this.soundFx.playPhaseChange();
+    // Зелёная вспышка — экопарк
+    this.cameras.main.flash(500, 20, 184, 70);
+    this.cameras.main.shake(200, 0.005);
+
+    // HUD-панель фазы — зелёная
+    this.phasePanelBg.clear();
+    this.phasePanelBg.fillStyle(0x0f172a, 0.95);
+    this.phasePanelBg.fillRoundedRect(170, 16, 130, 68, 12);
+    this.phasePanelBg.lineStyle(2, 0x4ade80, 1);
+    this.phasePanelBg.strokeRoundedRect(170, 16, 130, 68, 12);
+
+    this.phaseText.setText('🌿 ФАЗА 4');
+    this.phaseText.setColor('#4ade80');
+
+    // Убираем дождевую вуаль, добавляем зелёный эко-оверлей
+    if (this.rainOverlay) {
+      this.rainOverlay.destroy();
+      this.rainOverlay = undefined;
+    }
+    if (!this.ecoOverlay) {
+      this.ecoOverlay = this.add.graphics();
+      this.ecoOverlay.setScrollFactor(0);
+      this.ecoOverlay.setDepth(5);
+      this.ecoOverlay.fillStyle(0x052e16, 0.22);
+      this.ecoOverlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
+
+    this.showPhaseNotification(
+      '🌿 ФАЗА 4: КИБЕР-ЭКОПАРК 🌸',
+      '☀️ СОЛНЕЧНЫЙ КУПОЛ: пицца остывает медленнее! Новые Bio-пруды с кувшинками!',
+      0x4ade80
+    );
+  }
+
+  private showPhaseNotification(titleStr: string, descStr: string, color: number): void {
     const banner = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40);
     banner.setScrollFactor(0);
     banner.setDepth(1500);
 
-    const bW = 540;
+    const bW = 580;
     const bH = 100;
     const bg = this.add.graphics();
     bg.fillStyle(0x0f172a, 0.95);
     bg.fillRoundedRect(-bW / 2, -bH / 2, bW, bH, 14);
-    bg.lineStyle(3, 0xf59e0b, 1);
+    bg.lineStyle(3, color, 1);
     bg.strokeRoundedRect(-bW / 2, -bH / 2, bW, bH, 14);
     banner.add(bg);
 
-    const title = this.add.text(0, -20, '⚠️ НАЧАЛАСЬ ФАЗА 2! ⚠️', {
+    const title = this.add.text(0, -20, titleStr, {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '24px',
-      color: '#f59e0b',
+      fontSize: '22px',
+      color: `#${color.toString(16).padStart(6, '0')}`,
       fontStyle: 'bold',
     }).setOrigin(0.5);
     banner.add(title);
 
-    const desc = this.add.text(0, 16, '⚡ ЧАС ПИК: СКОРОСТЬ МАШИН +10%, ПОЕЗДА ХОДЯТ ЧАЩЕ!', {
+    const desc = this.add.text(0, 16, descStr, {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '13px',
       color: '#e2e8f0',
@@ -1697,12 +2061,17 @@ export class GameScene extends Phaser.Scene {
       this.handleDeliveryCompleted(lane);
     }
 
-    // 2. Сбор бонуса (Термо-пак или Крипто-чаевые)
+    // 2. Сбор бонуса (Термо-пак, Крипто-чаевые или Кофе)
     if (lane.itemCol !== undefined && lane.itemCol === this.playerCol && lane.itemContainer) {
       if (lane.itemType === 'hotpack') {
         this.temperature = Math.min(this.temperature + 20, 100);
         this.soundFx.playHeatBoost();
         this.showFloatNotice('🔥 +20°C ПИЦЦА ГОРЯЧАЯ!');
+      } else if (lane.itemType === 'coffee') {
+        // Кофе: небольшой прогрев + временная защита (имитируем прогревом +35°C)
+        this.temperature = Math.min(this.temperature + 35, 100);
+        this.soundFx.playHeatBoost();
+        this.showFloatNotice('☕ +35°C КОФЕ СОГРЕЛ! ПИЦЦА СПАСЕНА!');
       } else {
         this.tipsEarned += 10;
         localStorage.setItem('cyber_courier_tips', String(this.tipsEarned));
@@ -1733,6 +2102,45 @@ export class GameScene extends Phaser.Scene {
         this.handleEnergyFall();
       }
     }
+
+    // 4. Фаза 4: Bio-пруд с кувшинками
+    if (lane.type === 'lotus_pond') {
+      const p = this.findLotusPadUnderPlayer(lane);
+      if (p) {
+        this.currentRidePlatform = p;
+      } else {
+        this.handleEnergyFall('🌸 Упал в Bio-пруд — промочил пиццу!');
+      }
+    }
+
+    // 5. Фаза 3: Лужа на тротуаре — скользим вперёд на 1 шаг!
+    if (
+      lane.type === 'sidewalk' &&
+      lane.puddleCol !== undefined &&
+      lane.puddleCol === this.playerCol &&
+      this.playerFacing === 'up' &&
+      !this.isHopping
+    ) {
+      this.showFloatNotice('💧 СКОЛЬЗКО! +1 РЫВОК!');
+      this.time.delayedCall(80, () => {
+        if (!this.isDead && !this.isHopping) this.tryMove('up');
+      });
+    }
+
+    // 6. Фаза 4: Голо-барьер блокирует проход если барьер активен
+    if (lane.type === 'holo_barrier' && lane.holoBarrier?.active) {
+      // Отталкиваем назад
+      this.soundFx.playBonk();
+      this.playerRow -= 1;
+      this.showFloatNotice('🚫 ГОЛО-БАРЬЕР АКТИВЕН! ЖДИ...');
+      const pushY = this.rowToWorldY(this.playerRow);
+      this.tweens.add({
+        targets: this.playerContainer,
+        y: pushY,
+        duration: 120,
+        ease: 'Power2',
+      });
+    }
   }
 
   // Доставка заказа клиенту (однократно за контрольную точку)
@@ -1756,12 +2164,18 @@ export class GameScene extends Phaser.Scene {
       lane.deliveryText.setColor('#38bdf8');
     }
 
-    // CR-003: Запуск Фазы 2 по порогу прогресса (число доставленных заказов)
+    // CR-003: Запуск фаз по порогу доставленных заказов
     if (this.currentPhase === 1 && this.completedDeliveries >= PHASE_2_DELIVERY_THRESHOLD) {
       this.time.delayedCall(350, () => {
-        if (!this.isDead && this.currentPhase === 1) {
-          this.triggerPhase2();
-        }
+        if (!this.isDead && this.currentPhase === 1) this.triggerPhase2();
+      });
+    } else if (this.currentPhase === 2 && this.completedDeliveries >= PHASE_3_DELIVERY_THRESHOLD) {
+      this.time.delayedCall(350, () => {
+        if (!this.isDead && this.currentPhase === 2) this.triggerPhase3();
+      });
+    } else if (this.currentPhase === 3 && this.completedDeliveries >= PHASE_4_DELIVERY_THRESHOLD) {
+      this.time.delayedCall(350, () => {
+        if (!this.isDead && this.currentPhase === 3) this.triggerPhase4();
       });
     }
   }
@@ -1797,6 +2211,28 @@ export class GameScene extends Phaser.Scene {
     return null;
   }
 
+  private findLotusPadUnderPlayer(lane: Lane, checkX?: number): HoverPlatform | null {
+    const px = checkX !== undefined ? checkX : this.playerContainer.x;
+    for (const p of lane.lotusPads) {
+      // Лотосовые листы чуть больше бревен — допуск 28px
+      const halfW = p.width / 2 + 28;
+      if (px >= p.x - halfW && px <= p.x + halfW) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  /** Возвращает текстовый лейбл текущей фазы для HUD/паузы */
+  private getPhaseBadge(): string {
+    switch (this.currentPhase) {
+      case 2: return '⚡ ФАЗА 2: Час пик';
+      case 3: return '🌧️ ФАЗА 3: Неоновый дождь';
+      case 4: return '🌿 ФАЗА 4: Экопарк';
+      default: return 'ФАЗА 1: Дневная смена';
+    }
+  }
+
   // =========================================================================
   // UPDATE LOOP
   // =========================================================================
@@ -1827,8 +2263,8 @@ export class GameScene extends Phaser.Scene {
     // Клавиатура
     this.handleKeyboard();
 
-    // 1. ОСТЫВАНИЕ ПИЦЦЫ (ДЕКЛАЙН ЗАКАЗА)
-    this.temperature -= HEAT_DECAY_PER_SEC * dt;
+    // 1. ОСТЫВАНИЕ ПИЦЦЫ (ДЕКЛАЙН ЗАКАЗА) с учётом множителя текущей фазы
+    this.temperature -= HEAT_DECAY_PER_SEC * this.getPhaseConfig().heatDecayMultiplier * dt;
     this.updateTemperatureBar();
 
     if (this.temperature <= 0) {
@@ -1839,19 +2275,19 @@ export class GameScene extends Phaser.Scene {
     // Обновление полос
     this.updateLanes(dt);
 
-    // Движение на бревне (дрейф по воде)
+    // Движение на бревне (дрейф по воде) или на лотосовой платформе
     if (this.currentRidePlatform && !this.isHopping) {
       const p = this.currentRidePlatform;
       const lane = this.lanes.get(this.playerRow);
 
-      if (lane && lane.type === 'energy_canal') {
+      if (lane && (lane.type === 'energy_canal' || lane.type === 'lotus_pond')) {
         // Проверка уплытия за экран
         if (this.playerContainer.x < 15 || this.playerContainer.x > GAME_WIDTH - 15) {
-          this.handleEnergyFall('🌊 Унесло течением реки за край экрана!');
+          this.handleEnergyFall('🌊 Унесло течением за край экрана!');
           return;
         }
 
-        // Дрейф вместе с бревном
+        // Дрейф вместе с платформой
         this.playerContainer.x += p.speed * p.direction * dt;
         this.playerCol = Phaser.Math.Clamp(
           Math.round((this.playerContainer.x - TILE_SIZE / 2) / TILE_SIZE),
@@ -1859,8 +2295,12 @@ export class GameScene extends Phaser.Scene {
           GRID_COLS - 1
         );
 
-        // Проверка, что игрок всё ещё на бревне
-        if (!this.findPlatformUnderPlayer(lane, this.playerContainer.x)) {
+        // Проверка, что игрок всё ещё на платформе
+        const stillOn = lane.type === 'lotus_pond'
+          ? this.findLotusPadUnderPlayer(lane, this.playerContainer.x)
+          : this.findPlatformUnderPlayer(lane, this.playerContainer.x);
+
+        if (!stillOn) {
           this.handleEnergyFall();
           return;
         }
@@ -1893,7 +2333,7 @@ export class GameScene extends Phaser.Scene {
   private updateLanes(dt: number): void {
     const minRow = this.playerRow - MAX_LANES_BEHIND;
     const maxRow = this.playerRow + LANES_AHEAD;
-    const phaseConfig = this.currentPhase === 2 ? GAME_CONFIG.phases.phase2 : GAME_CONFIG.phases.phase1;
+    const phaseConfig = this.getPhaseConfig();
     const phaseSpeedMultiplier = phaseConfig.vehicleSpeedMultiplier;
 
     for (let r = minRow; r <= maxRow; r++) {
@@ -2006,12 +2446,62 @@ export class GameScene extends Phaser.Scene {
           if (isOff) {
             t.active = false;
             t.graphics.clear();
-            // В Фазе 2 поезда появляются значительно чаще!
+            // В Фазе 2+ поезда появляются значительно чаще!
             const minWait = phaseConfig.hyperloopMinWait;
             const maxWait = phaseConfig.hyperloopMaxWait;
             t.warningTimer = Phaser.Math.FloatBetween(minWait, maxWait);
             this.drawHyperloopSignal(t.signalGraphics, false);
           }
+        }
+      }
+
+      // Лотосовые платформы (Фаза 4: Bio-пруд)
+      if (lane.type === 'lotus_pond') {
+        const wrapBound = 160;
+        const span = GAME_WIDTH + wrapBound * 2;
+
+        for (const p of lane.lotusPads) {
+          p.x += p.speed * p.direction * dt;
+          if (p.direction === 1 && p.x > GAME_WIDTH + wrapBound) {
+            p.x -= span;
+          } else if (p.direction === -1 && p.x < -wrapBound) {
+            p.x += span;
+          }
+          this.drawLotusPad(p);
+        }
+      }
+
+      // Дроны-уборщики (Фаза 3: Неоновый дождь, тротуар)
+      if (lane.type === 'sidewalk' && lane.cleanBots.length > 0) {
+        for (const bot of lane.cleanBots) {
+          bot.x += bot.speed * bot.direction * dt;
+          if (bot.direction === 1 && bot.x > GAME_WIDTH + 60) {
+            bot.x = -60;
+          } else if (bot.direction === -1 && bot.x < -60) {
+            bot.x = GAME_WIDTH + 60;
+          }
+          this.drawCleanBot(bot);
+
+          // Дрон-уборщик мягко отталкивает игрока (не убивает!)
+          if (lane.rowIndex === this.playerRow && !this.isHopping && !this.isDead) {
+            const pushDist = Math.abs(this.playerContainer.x - bot.x);
+            if (pushDist < 28) {
+              const pushDir = this.playerContainer.x < bot.x ? 'left' : 'right';
+              this.showFloatNotice('🤖 ДРОН-УБОРЩИК!');
+              this.tryMove(pushDir);
+            }
+          }
+        }
+      }
+
+      // Голо-барьеры (Фаза 4: Экопарк, переключаются как светофор)
+      if (lane.type === 'holo_barrier' && lane.holoBarrier) {
+        const hb = lane.holoBarrier;
+        hb.switchTimer -= dt;
+        if (hb.switchTimer <= 0) {
+          hb.active = !hb.active;
+          hb.switchTimer = Phaser.Math.FloatBetween(1.5, 3.0);
+          this.drawHoloBarrier(hb.graphics, hb.active);
         }
       }
     }
@@ -2132,8 +2622,7 @@ export class GameScene extends Phaser.Scene {
     if (reasonText) reasonText.setText(reason);
     if (statsText) {
       const best = isNewBest ? `🏆 НОВЫЙ РЕКОРД ДИСТАНЦИИ: ${this.maxDistance} м! 🌟` : `Дистанция: ${this.maxDistance} м  |  Рекорд: ${this.highScore} м`;
-      const phaseBadge = this.currentPhase === 2 ? '⚡ ФАЗА 2' : 'ФАЗА 1';
-      statsText.setText(`${best}\n⏱️ Время смены: ${this.formatGameTime(this.gameTime)} (${phaseBadge})\n🎯 Доставлено заказов: ${this.completedDeliveries}\n💵 Всего чаевых: $${this.tipsEarned}`);
+      const phaseBadge = this.getPhaseBadge();      statsText.setText(`${best}\n⏱️ Время смены: ${this.formatGameTime(this.gameTime)} (${phaseBadge})\n🎯 Доставлено заказов: ${this.completedDeliveries}\n💵 Всего чаевых: $${this.tipsEarned}`);
     }
 
     this.gameOverContainer.setVisible(true);
