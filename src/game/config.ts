@@ -41,25 +41,25 @@ export const GAME_CONFIG = {
       heatDecayMultiplier: 1.0,
     },
     phase2: {
-      vehicleSpeedMultiplier: 1.10, // Час пик: +10% скорость
-      hyperloopChance: 0.82,
-      hyperloopMinWait: 2.5,
-      hyperloopMaxWait: 5.5,
-      heatDecayMultiplier: 1.0,
+      vehicleSpeedMultiplier: 0.65, // Час пик (смягчённая сложность -50%)
+      hyperloopChance: 0.73,
+      hyperloopMinWait: 5.0,
+      hyperloopMaxWait: 10.0,
+      heatDecayMultiplier: 0.5, // Пицца остывает на 50% медленнее
     },
     phase3: {
-      vehicleSpeedMultiplier: 1.10, // Ночной дождь: скорость машин та же
-      hyperloopChance: 0.82,
-      hyperloopMinWait: 2.5,
-      hyperloopMaxWait: 5.5,
-      heatDecayMultiplier: 1.15, // Ночью прохладнее — пицца чуть быстрее остывает
+      vehicleSpeedMultiplier: 0.70, // Ночной дождь (смягчённая сложность -50%)
+      hyperloopChance: 0.73,
+      hyperloopMinWait: 5.0,
+      hyperloopMaxWait: 10.0,
+      heatDecayMultiplier: 0.58, // Остывание снижено на 50% от исходного (1.15 -> 0.58)
     },
     phase4: {
-      vehicleSpeedMultiplier: 1.10,
-      hyperloopChance: 0.82,
-      hyperloopMinWait: 2.5,
-      hyperloopMaxWait: 5.5,
-      heatDecayMultiplier: 0.6, // Солнечный купол экопарка — пицца остывает медленнее!
+      vehicleSpeedMultiplier: 0.72, // Кибер-экопарк (смягчённая сложность -50%)
+      hyperloopChance: 0.73,
+      hyperloopMinWait: 5.0,
+      hyperloopMaxWait: 10.0,
+      heatDecayMultiplier: 0.3, // Солнечный купол экопарка — остывание снижено ещё на 50%!
     },
   },
 } as const;

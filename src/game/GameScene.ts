@@ -357,7 +357,7 @@ export class GameScene extends Phaser.Scene {
       // В Фазах 3 и 4 добавляются новые типы полос
       if (this.currentPhase >= 3 && prevType === 'lotus_pond' && rand < 0.42) {
         type = 'lotus_pond';
-      } else if (this.currentPhase >= 4 && rand < 0.12 && rowIndex > 10) {
+      } else if (this.currentPhase >= 4 && rand < 0.06 && rowIndex > 10) {
         type = 'holo_barrier';
       } else if (this.currentPhase >= 3 && rand < 0.18 && rowIndex > 8) {
         type = 'lotus_pond';
@@ -411,7 +411,7 @@ export class GameScene extends Phaser.Scene {
     const { bgGraphics, container, type, rowIndex } = lane;
     bgGraphics.clear();
 
-    const speedScale = 1 + Math.min(this.maxDistance / 80, 0.9);
+    const speedScale = 1 + Math.min(this.maxDistance / 160, 0.45);
 
     if (type === 'delivery_point') {
       // ЗОНА ДОСТАВКИ КЛИЕНТА
@@ -493,7 +493,7 @@ export class GameScene extends Phaser.Scene {
         // Фаза 3: лужи на тротуаре (скольжение) + дроны-уборщики
         if (this.currentPhase >= 3 && rowIndex > 1) {
           // Лужа
-          if (Math.random() < 0.4) {
+          if (Math.random() < 0.2) {
             const puddleCol = Phaser.Math.Between(0, GRID_COLS - 1);
             if (!lane.obstacles.has(puddleCol)) {
               lane.puddleCol = puddleCol;
@@ -509,14 +509,14 @@ export class GameScene extends Phaser.Scene {
           }
 
           // Дрон-уборщик
-          if (Math.random() < 0.35) {
+          if (Math.random() < 0.18) {
             const botDir: 1 | -1 = rowIndex % 2 === 0 ? 1 : -1;
             const botX = botDir === 1 ? -60 : GAME_WIDTH + 60;
             const botG = this.add.graphics();
             container.add(botG);
             const bot: CleanBot = {
               x: botX,
-              speed: Phaser.Math.Between(45, 75),
+              speed: Phaser.Math.Between(25, 40),
               direction: botDir,
               graphics: botG,
             };
@@ -1567,7 +1567,7 @@ export class GameScene extends Phaser.Scene {
 
     this.showPhaseNotification(
       '⚠️ НАЧАЛАСЬ ФАЗА 2! ⚠️',
-      '⚡ ЧАС ПИК: СКОРОСТЬ МАШИН +10%, ПОЕЗДА ХОДЯТ ЧАЩЕ!',
+      '⚡ ЧАС ПИК: Спокойный трафик, пицца дольше держит тепло!',
       0xf59e0b
     );
   }
@@ -1600,7 +1600,7 @@ export class GameScene extends Phaser.Scene {
 
     this.showPhaseNotification(
       '🌧️ ФАЗА 3: НЕОНОВЫЙ ДОЖДЬ 🌧️',
-      '🌧️ НОЧЬ: Лужи ускоряют рывок вперёд! Пицца остывает чуть быстрее.',
+      '🌧️ НОЧЬ: Лужи ускоряют рывок вперёд! Осторожнее с дронами-уборщиками.',
       0x818cf8
     );
   }
